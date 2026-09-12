@@ -1,11 +1,22 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { version } from '$app/environment';
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import PasswordChangeForm from '$lib/components/PasswordChangeForm.svelte';
 
 	let { data, children } = $props();
+
+	onMount(() => {
+		if (!('serviceWorker' in navigator)) return;
+
+		// ビルドごとにURLを変え、CDNに残った旧service-worker.jsを再利用させない。
+		navigator.serviceWorker
+			.register(`/service-worker.js?v=${encodeURIComponent(version)}`)
+			.catch((error: unknown) => console.error('Service Workerの登録に失敗しました', error));
+	});
 
 	const nav = [
 		{ href: '/', label: '保証登録' },

@@ -10,7 +10,12 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter()
+			adapter: adapter(),
+			serviceWorker: {
+				// CDN が古い service-worker.js をキャッシュし続ける問題を避けるため、
+				// 自動登録を止めて +layout.svelte からバージョン付きURLで手動登録する。
+				register: false
+			}
 		})
 	],
 	test: {
