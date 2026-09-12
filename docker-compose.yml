@@ -19,5 +19,18 @@ services:
     volumes:
       # バインドマウント: SQLite と添付画像をプロジェクト直下 data/ に置く。
       - ./data:/data
-    ports:
-      - '3000:3000'
+    # 直接ポート公開はせず、共用 cloudflared からのみ到達させる(下記 networks 経由)。
+    expose:
+      - '3000'
+    networks:
+      default:
+      proxy:
+        aliases:
+          - warranty_remember-app
+
+networks:
+  # cloudflared は NAS 上の共用 compose から同じネットワークに参加する。
+  # 初回だけ `docker network create cloudflare-proxy` を実行する(stockify 導入時に作成済みのはず)。
+  proxy:
+    name: cloudflare-proxy
+    external: true

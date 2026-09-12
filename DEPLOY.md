@@ -74,7 +74,9 @@ Cloudflare Zero Trust ダッシュボード → **Networks → Tunnels** → 既
 
 - Subdomain: `warranty`、Domain: `example.com`(例)
 - Service: **HTTP** → `warranty_remember-app:3000`
-  (Container Manager が付けるコンテナ名。実際の名前は起動後に Container Manager で確認・調整する)
+  (Container Manager が自動で付けるコンテナ名ではなく、`docker-compose.yml` の
+  `networks.proxy.aliases` で明示的に付けたエイリアス。`app` サービスが `cloudflare-proxy`
+  ネットワークに参加していないと、cloudflared からこの名前で到達できず **Bad Gateway** になる)
 
 ---
 
@@ -130,6 +132,7 @@ SQLite と添付画像はどちらも `/docker/warranty_remember/data/` 配下(`
 | プロジェクト起動時に `pull` が `denied`/`unauthorized` | `sudo docker pull ghcr.io/taaaaaaachu/warranty_remember:latest` で単体切り分け。それも失敗するなら手順2〜3(classic PAT・`docker login`)をやり直す。それで通るのにCM経由だけ失敗するなら、先にSSHでpullしておけば起動できる(既知の挙動)。 |
 | `manifest unknown` | 認証の問題ではなくタグが存在しない。GitHub Actionsの `build-push` が `main` で成功しているか確認(PR段階では配布されない)。 |
 | ログイン/登録で 403 | `.env` の `ORIGIN` が公開URLと不一致。修正して `app` を再起動。 |
+| `warranty.example.com` で **Bad Gateway** | `app` が `cloudflare-proxy` ネットワークに参加していない(`docker-compose.yml` に手順6の `networks:` 設定が無い版を使っている)。最新の `docker-compose.yml` に差し替えて `docker compose up -d` で再作成する。 |
 | 画像が表示されない | `data/uploads` の権限やボリュームマウントを確認。`UPLOAD_DIR=/data/uploads` はcompose側で固定済み。 |
 | Watchtowerが更新してくれない | 共用Watchtowerが動いているか、ラベル `com.centurylinklabs.watchtower.enable=true` が付いているかを確認。 |
 | 最初からやり直したい | プロジェクト停止 → File Station で `data/` を削除 → 起動(全データ消去)。 |
