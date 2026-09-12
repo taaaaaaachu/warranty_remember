@@ -291,7 +291,7 @@
 			招待(世帯「{data.activeHousehold?.name}」へ招く)
 		</h2>
 		<form onsubmit={createInvite} style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.7rem;">
-			<input bind:value={inviteExpiry} type="number" min="1" placeholder="有効日数(空欄=無期限)" style="flex:1;" />
+			<input bind:value={inviteExpiry} type="text" inputmode="numeric" placeholder="有効日数(空欄=無期限)" style="flex:1;" />
 			<button type="submit" disabled={busy} style="background:var(--accent); color:#fff; border:none; border-radius:0.5rem; padding:0.4rem 0.8rem; cursor:pointer;">招待コードを発行</button>
 		</form>
 		{#if lastCode}

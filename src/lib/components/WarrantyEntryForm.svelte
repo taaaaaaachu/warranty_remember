@@ -123,7 +123,7 @@
 			</label>
 			<label style="display:flex; flex-direction:column; gap:0.25rem; flex:1; min-width:8rem;">
 				<span>金額(任意・円)</span>
-				<input bind:value={price} type="number" min="0" step="1" />
+				<input bind:value={price} type="text" inputmode="numeric" />
 			</label>
 		</div>
 	</fieldset>
@@ -143,7 +143,7 @@
 		{#if endDateMode === 'months'}
 			<label style="display:flex; flex-direction:column; gap:0.25rem; max-width:12rem;">
 				<span>保証期間(月数)</span>
-				<input bind:value={warrantyMonths} type="number" min="1" step="1" required />
+				<input bind:value={warrantyMonths} type="text" inputmode="numeric" required />
 			</label>
 		{:else}
 			<label style="display:flex; flex-direction:column; gap:0.25rem; max-width:12rem;">
