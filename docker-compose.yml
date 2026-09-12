@@ -1,9 +1,13 @@
 # 自宅サーバー等での本番運用を想定した構成。
+# GitHub Actions がビルドして GHCR に push したイメージを使う(ここではビルドしない)。
+# Watchtower がこのイメージの更新を監視し、新しい :latest を検知したら自動 pull → 再作成する
+# (Watchtower 自体は別プロジェクトとして1台だけ動かし、有効ラベル付きコンテナ全体を監視する想定)。
 services:
   app:
-    build: .
-    image: warranty-remember:latest
+    image: ghcr.io/taaaaaaachu/warranty_remember:latest
     restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
     environment:
       # adapter-node がリバースプロキシ配下で form action / CSRF 検証に使う公開オリジン。
       # 自分のドメインに合わせて変更する。
