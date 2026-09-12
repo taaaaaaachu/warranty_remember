@@ -1,0 +1,19 @@
+# 自宅サーバー等での本番運用を想定した構成。
+services:
+  app:
+    build: .
+    image: warranty-remember:latest
+    restart: unless-stopped
+    environment:
+      # adapter-node がリバースプロキシ配下で form action / CSRF 検証に使う公開オリジン。
+      # 自分のドメインに合わせて変更する。
+      - ORIGIN=${ORIGIN:-http://localhost:3000}
+      - DATABASE_PATH=/data/app.sqlite
+      - UPLOAD_DIR=/data/uploads
+      - PORT=3000
+      - TZ=Asia/Tokyo
+    volumes:
+      # バインドマウント: SQLite と添付画像をプロジェクト直下 data/ に置く。
+      - ./data:/data
+    ports:
+      - '3000:3000'
