@@ -33,9 +33,11 @@
 			if (!uploadRes.ok) {
 				// 登録自体は成功しているので、画像だけ後で追加できるよう詳細画面へ進む。
 				uploadError = '登録は完了しましたが、画像のアップロードに失敗しました。詳細画面から再度お試しください。';
+				await goto(resolve('/entries/[id]', { id: result.id }));
+				return;
 			}
 		}
-		await goto(resolve('/entries/[id]', { id: result.id }));
+		await goto(resolve('/'));
 	}
 </script>
 
