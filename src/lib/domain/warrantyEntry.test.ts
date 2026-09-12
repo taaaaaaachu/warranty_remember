@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeWarrantyEndAt, daysUntil, sortByWarrantyEndAt } from './warrantyEntry';
+import { computeWarrantyEndAt, daysUntil, sortByWarrantyEndAt, resolveWarrantyEndAt } from './warrantyEntry';
 
 describe('computeWarrantyEndAt', () => {
 	it('購入日に保証月数を足した日付を返す', () => {
@@ -30,6 +30,23 @@ describe('daysUntil', () => {
 		const now = Date.UTC(2024, 0, 10);
 		const end = Date.UTC(2024, 0, 1);
 		expect(daysUntil(now, end)).toBe(-9);
+	});
+});
+
+describe('resolveWarrantyEndAt', () => {
+	it('warrantyMonths があれば自動計算を優先する', () => {
+		const purchasedAt = Date.UTC(2024, 0, 1);
+		expect(resolveWarrantyEndAt(purchasedAt, 12, Date.UTC(2099, 0, 1))).toBe(Date.UTC(2025, 0, 1));
+	});
+
+	it('warrantyMonths が null なら手動値をそのまま採用する', () => {
+		const purchasedAt = Date.UTC(2024, 0, 1);
+		const manual = Date.UTC(2026, 0, 1);
+		expect(resolveWarrantyEndAt(purchasedAt, null, manual)).toBe(manual);
+	});
+
+	it('両方nullなら例外', () => {
+		expect(() => resolveWarrantyEndAt(Date.UTC(2024, 0, 1), null, null)).toThrow();
 	});
 });
 

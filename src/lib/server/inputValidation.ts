@@ -42,8 +42,10 @@ export interface WarrantyEntryInput {
 	purchasedAt: number;
 	purchasedFrom: string | null;
 	price: number | null;
+	/** 非null なら保証終了日を自動計算する(手動上書き時は null)。 */
 	warrantyMonths: number | null;
-	warrantyEndAt: number;
+	/** warrantyMonths が null のときだけ意味を持つ、手動入力の保証終了日。 */
+	warrantyEndAtOverride: number | null;
 	contactNote: string | null;
 	memo: string | null;
 }
@@ -52,8 +54,8 @@ export type WarrantyEntryInputError = { field: string; message: string };
 
 /**
  * 保証登録フォーム入力を検証する。
- * warrantyEndAt は「購入日+保証月数」からの自動計算値、または手動入力値のどちらかを
- * 呼び出し側で解決してから渡す(このバリデータは最終的な数値だけを見る)。
+ * 保証終了日そのものの確定(自動計算 or 手動値の採用)は呼び出し側(server/warranty.ts)が
+ * warrantyMonths / warrantyEndAtOverride から解決する。
  */
 export function validateWarrantyEntryInput(body: Record<string, unknown>): WarrantyEntryInput | WarrantyEntryInputError {
 	const name = parseNonEmptyString(body.name);
@@ -69,8 +71,9 @@ export function validateWarrantyEntryInput(body: Record<string, unknown>): Warra
 		if (warrantyMonths === null) return { field: 'warrantyMonths', message: '保証期間(月数)が不正です。' };
 	}
 
-	const warrantyEndAt = parseDateMs(body.warrantyEndAt);
-	if (warrantyEndAt === null) return { field: 'warrantyEndAt', message: '保証終了日が不正です。' };
+	const warrantyEndAtOverride = parseDateMs(body.warrantyEndAt);
+	if (warrantyMonths === null && warrantyEndAtOverride === null)
+		return { field: 'warrantyEndAt', message: '保証期間(月数)か保証終了日のどちらかは必須です。' };
 
 	const priceRaw = body.price;
 	let price: number | null = null;
@@ -89,7 +92,7 @@ export function validateWarrantyEntryInput(body: Record<string, unknown>): Warra
 		purchasedFrom: parseOptionalString(body.purchasedFrom),
 		price,
 		warrantyMonths,
-		warrantyEndAt,
+		warrantyEndAtOverride,
 		contactNote: parseOptionalString(body.contactNote),
 		memo: parseOptionalString(body.memo)
 	};

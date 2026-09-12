@@ -42,6 +42,17 @@ describe('validateWarrantyEntryInput', () => {
 		if (isWarrantyEntryInputError(result)) expect(result.field).toBe('price');
 	});
 
+	it('warrantyMonthsもwarrantyEndAtも無ければエラー', () => {
+		const result = validateWarrantyEntryInput({ name: 'イヤホン', purchasedAt: '2024-01-01' });
+		expect(isWarrantyEntryInputError(result)).toBe(true);
+		if (isWarrantyEntryInputError(result)) expect(result.field).toBe('warrantyEndAt');
+	});
+
+	it('warrantyMonthsがあればwarrantyEndAt省略でも通る', () => {
+		const result = validateWarrantyEntryInput({ name: 'イヤホン', purchasedAt: '2024-01-01', warrantyMonths: 12 });
+		expect(isWarrantyEntryInputError(result)).toBe(false);
+	});
+
 	it('任意項目を含めて正しく解釈する', () => {
 		const result = validateWarrantyEntryInput({
 			...baseBody,

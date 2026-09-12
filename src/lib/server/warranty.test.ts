@@ -30,8 +30,10 @@ const baseInput: WarrantyEntryInput = {
 	purchasedAt: Date.UTC(2024, 0, 1),
 	purchasedFrom: 'Amazon',
 	price: 9800,
-	warrantyMonths: 12,
-	warrantyEndAt: Date.UTC(2025, 0, 1),
+	// テストでは既定で手動上書きモード(warrantyMonths: null)にしておき、
+	// 各テストが warrantyEndAt を直接指定できるようにする。
+	warrantyMonths: null,
+	warrantyEndAtOverride: Date.UTC(2025, 0, 1),
 	contactNote: null,
 	memo: null
 };
@@ -57,9 +59,9 @@ describe('作成・取得', () => {
 
 describe('一覧', () => {
 	it('通常一覧は保証終了日が近い順で、アーカイブ済みは含まない', () => {
-		const soon = createWarrantyEntry(db, householdId, { ...baseInput, warrantyEndAt: Date.UTC(2024, 5, 1) });
-		const later = createWarrantyEntry(db, householdId, { ...baseInput, warrantyEndAt: Date.UTC(2026, 0, 1) });
-		const archived = createWarrantyEntry(db, householdId, { ...baseInput, warrantyEndAt: Date.UTC(2024, 0, 1) });
+		const soon = createWarrantyEntry(db, householdId, { ...baseInput, warrantyEndAtOverride: Date.UTC(2024, 5, 1) });
+		const later = createWarrantyEntry(db, householdId, { ...baseInput, warrantyEndAtOverride: Date.UTC(2026, 0, 1) });
+		const archived = createWarrantyEntry(db, householdId, { ...baseInput, warrantyEndAtOverride: Date.UTC(2024, 0, 1) });
 		archiveWarrantyEntry(db, householdId, archived.id);
 
 		const list = listWarrantyEntries(db, householdId, { archived: false });
@@ -73,6 +75,30 @@ describe('一覧', () => {
 		expect(listWarrantyEntries(db, householdId, { archived: false, category: '美容家電' })).toHaveLength(1);
 		expect(listWarrantyEntries(db, householdId, { archived: false, query: 'イヤホン' })).toHaveLength(1);
 		expect(listWarrantyEntries(db, householdId, { archived: false, query: '存在しない' })).toHaveLength(0);
+	});
+});
+
+describe('保証終了日の解決', () => {
+	it('warrantyMonthsがあれば購入日からの自動計算になる', () => {
+		const entry = createWarrantyEntry(db, householdId, { ...baseInput, warrantyMonths: 12, warrantyEndAtOverride: null });
+		expect(entry.warrantyEndAt).toBe(Date.UTC(2025, 0, 1));
+		expect(entry.warrantyMonths).toBe(12);
+	});
+
+	it('warrantyMonthsがnullなら手動入力のwarrantyEndAtOverrideをそのまま使う', () => {
+		const manual = Date.UTC(2026, 5, 1);
+		const entry = createWarrantyEntry(db, householdId, { ...baseInput, warrantyMonths: null, warrantyEndAtOverride: manual });
+		expect(entry.warrantyEndAt).toBe(manual);
+		expect(entry.warrantyMonths).toBeNull();
+	});
+
+	it('更新時に手動上書きへ切り替えるとwarrantyMonthsがnullになる', () => {
+		const entry = createWarrantyEntry(db, householdId, { ...baseInput, warrantyMonths: 12, warrantyEndAtOverride: null });
+		const manual = Date.UTC(2027, 0, 1);
+		updateWarrantyEntry(db, householdId, entry.id, { ...baseInput, warrantyMonths: null, warrantyEndAtOverride: manual });
+		const updated = getWarrantyEntry(db, householdId, entry.id);
+		expect(updated?.warrantyEndAt).toBe(manual);
+		expect(updated?.warrantyMonths).toBeNull();
 	});
 });
 

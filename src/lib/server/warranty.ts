@@ -3,6 +3,7 @@ import { and, eq, isNull, isNotNull, desc, asc, like, or } from 'drizzle-orm';
 import type { Db } from './db';
 import { warrantyEntries, attachments, type WarrantyEntryRow, type AttachmentRow } from './db/schema';
 import type { WarrantyEntryInput } from './inputValidation';
+import { resolveWarrantyEndAt } from '$lib/domain/warrantyEntry';
 
 function newId(): string {
 	return randomBytes(16).toString('hex');
@@ -22,7 +23,7 @@ export function createWarrantyEntry(db: Db, householdId: string, input: Warranty
 		purchasedFrom: input.purchasedFrom,
 		price: input.price,
 		warrantyMonths: input.warrantyMonths,
-		warrantyEndAt: input.warrantyEndAt,
+		warrantyEndAt: resolveWarrantyEndAt(input.purchasedAt, input.warrantyMonths, input.warrantyEndAtOverride),
 		contactNote: input.contactNote,
 		memo: input.memo,
 		archivedAt: null,
@@ -77,7 +78,21 @@ export function listWarrantyEntries(db: Db, householdId: string, options: ListWa
 export function updateWarrantyEntry(db: Db, householdId: string, id: string, input: WarrantyEntryInput): boolean {
 	const result = db
 		.update(warrantyEntries)
-		.set({ ...input, updatedAt: Date.now() })
+		.set({
+			name: input.name,
+			category: input.category,
+			manufacturer: input.manufacturer,
+			modelNumber: input.modelNumber,
+			serialNumber: input.serialNumber,
+			purchasedAt: input.purchasedAt,
+			purchasedFrom: input.purchasedFrom,
+			price: input.price,
+			warrantyMonths: input.warrantyMonths,
+			warrantyEndAt: resolveWarrantyEndAt(input.purchasedAt, input.warrantyMonths, input.warrantyEndAtOverride),
+			contactNote: input.contactNote,
+			memo: input.memo,
+			updatedAt: Date.now()
+		})
 		.where(and(eq(warrantyEntries.id, id), eq(warrantyEntries.householdId, householdId)))
 		.run();
 	return result.changes > 0;

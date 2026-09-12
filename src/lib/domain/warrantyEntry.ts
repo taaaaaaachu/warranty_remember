@@ -12,6 +12,21 @@ export function daysUntil(now: number, warrantyEndAt: number): number {
 	return Math.ceil((warrantyEndAt - now) / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * 保証終了日を確定する。warrantyMonths が指定されていれば購入日からの自動計算を優先し、
+ * そうでなければ手動入力の warrantyEndAtOverride をそのまま採用する。
+ * (手動上書き時は warrantyMonths を null に戻すのが呼び出し側の責務。)
+ */
+export function resolveWarrantyEndAt(
+	purchasedAt: number,
+	warrantyMonths: number | null,
+	warrantyEndAtOverride: number | null
+): number {
+	if (warrantyMonths !== null) return computeWarrantyEndAt(purchasedAt, warrantyMonths);
+	if (warrantyEndAtOverride !== null) return warrantyEndAtOverride;
+	throw new Error('warrantyMonths か warrantyEndAtOverride のどちらかが必要です。');
+}
+
 export interface EntryLike {
 	warrantyEndAt: number;
 }
