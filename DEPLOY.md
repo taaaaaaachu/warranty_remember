@@ -133,6 +133,7 @@ SQLite と添付画像はどちらも `/docker/warranty_remember/data/` 配下(`
 | `manifest unknown` | 認証の問題ではなくタグが存在しない。GitHub Actionsの `build-push` が `main` で成功しているか確認(PR段階では配布されない)。 |
 | ログイン/登録で 403 | `.env` の `ORIGIN` が公開URLと不一致。修正して `app` を再起動。 |
 | `warranty.example.com` で **Bad Gateway** | `app` が `cloudflare-proxy` ネットワークに参加していない(`docker-compose.yml` に手順6の `networks:` 設定が無い版を使っている)。最新の `docker-compose.yml` に差し替えて `docker compose up -d` で再作成する。 |
+| 画像アップロードで「アップロード形式が不正です」 | adapter-node の既定ボディサイズ上限(512K)を写真が超えている。`docker-compose.yml` の `BODY_SIZE_LIMIT=100M` が反映されているか確認し、最新版に差し替えて `docker compose up -d`。 |
 | 画像が表示されない | `data/uploads` の権限やボリュームマウントを確認。`UPLOAD_DIR=/data/uploads` はcompose側で固定済み。 |
 | Watchtowerが更新してくれない | 共用Watchtowerが動いているか、ラベル `com.centurylinklabs.watchtower.enable=true` が付いているかを確認。 |
 | 最初からやり直したい | プロジェクト停止 → File Station で `data/` を削除 → 起動(全データ消去)。 |

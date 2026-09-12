@@ -16,6 +16,9 @@ services:
       - UPLOAD_DIR=/data/uploads
       - PORT=3000
       - TZ=Asia/Tokyo
+      # adapter-node の既定は 512K しかなく、スマホ写真のアップロードで簡単に超える。
+      # 添付画像は1枚20MBまで許可しているため、複数枚まとめてのアップロードも見込んで広めに取る。
+      - BODY_SIZE_LIMIT=100M
     volumes:
       # バインドマウント: SQLite と添付画像をプロジェクト直下 data/ に置く。
       - ./data:/data
