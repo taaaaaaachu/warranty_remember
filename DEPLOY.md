@@ -1,7 +1,12 @@
-# Warranty Remember デプロイ手順書(Synology NAS・SSH不要)
+# Warranty Remember デプロイ手順書(Synology NAS)
 
 stockify と同じ Synology NAS(Container Manager + 共用 cloudflared + 共用 Watchtower)に同居させる想定です。
 GHCR の**ビルド済みイメージ**を参照するだけなので、NAS 側でのビルドやソースコードのアップロードは不要です。
+
+> **Container Manager の「レジストリ」GUI登録は使わない。** stockify 導入時の経験上、
+> Container Manager のプロジェクト起動は GUI レジストリ登録の資格情報を参照せず、
+> `denied` になることがある。確実なのは **SSH で `docker login` して `/root/.docker/config.json`
+> に資格情報を保存し、それを Watchtower にマウントする**方法。以下はその手順。
 
 ---
 
@@ -10,22 +15,42 @@ GHCR の**ビルド済みイメージ**を参照するだけなので、NAS 側�
 - stockify と同じ NAS(Container Manager・共用 cloudflared・共用 Watchtower が既に動いている)。
 - GitHub Actions が `ghcr.io/taaaaaaachu/warranty_remember:latest` を push 済み(`main` push で自動)。
 - このリポジトリは **private** なので、GHCR のイメージも private。NAS からの `pull` には認証が要る。
+- SSH で NAS に入れること(コントロールパネル → 端末とSNMP → SSH機能を有効化 が必要な場合あり)。
 
 ---
 
 ## 2. GHCR 用アクセストークンを発行(ブラウザ)
 
+**必ず classic PAT を使う。Fine-grained PAT は Synology から private GHCR を pull すると
+`denied` になる既知の問題があるため不可。**
+
 1. GitHub → 右上アイコン → **Settings → Developer settings → Personal access tokens → Tokens (classic)**。
 2. **Generate new token (classic)**。スコープは **`read:packages`** のみ。
 3. 発行されたトークン(`ghp_...`)を控える。**この画面を閉じると二度と表示されません。**
 
+> このトークンは `ghcr.io` 1エントリとして保存され、taaaaaaachu アカウント配下の
+> **全 private パッケージの pull に使い回せる**。stockify 用に既にログイン済みなら、
+> 次の手順3は不要(`/root/.docker/config.json` を確認するだけでよい)。
+
 ---
 
-## 3. Container Manager にレジストリを登録(NAS・GUI)
+## 3. NASにSSHで入り、rootでdockerログイン
 
-1. **Container Manager** → **レジストリ** → **設定** → **追加**。
-2. URL: `https://ghcr.io`、ユーザー名: `taaaaaaachu`、パスワード: 手順2のトークン。
-3. 追加後、この登録が private イメージの `pull` に使われます。
+```bash
+sudo docker login ghcr.io -u taaaaaaachu --password-stdin
+```
+
+プロンプトで手順2のPATを貼り付けて Enter(`--password-stdin` なのでシェル履歴に残らない)。
+`Login Succeeded` が出れば OK。`/root/.docker/config.json` に資格情報が保存される。
+
+念のため手動 pull で疎通確認する:
+
+```bash
+sudo docker pull ghcr.io/taaaaaaachu/warranty_remember:latest
+```
+
+これが通れば認証は問題ない。ここで通らない場合は Container Manager 側の設定を疑う前に、
+このコマンド単体で切り分けること。
 
 ---
 
@@ -60,6 +85,8 @@ Cloudflare Zero Trust ダッシュボード → **Networks → Tunnels** → 既
 3. パス: `/docker/warranty_remember`。
 4. ソース: 「既存の docker-compose.yml を使用」。
 5. **起動**(ビルドではなく `pull` のみで数十秒程度)。
+   - 手順3で事前に `sudo docker pull` 済みなら、ここでの pull は実質キャッシュヒットで
+     すぐ終わる(または省略されてローカルイメージがそのまま使われる)。
 6. `app` コンテナが起動時に DB マイグレーションを自動適用します。
 
 ---
@@ -78,6 +105,11 @@ Cloudflare Zero Trust ダッシュボード → **Networks → Tunnels** → 既
 NAS 上の共用 Watchtower プロジェクトが `ghcr.io/taaaaaaachu/warranty_remember` の新しい `:latest` を検知すると、
 **自動で pull → コンテナ再作成**します。手動更新は基本的に不要です。
 
+private イメージを Watchtower が pull できるのは、共用 Watchtower の compose が
+`/root/.docker/config.json:/config.json:ro` をマウントしているため(stockify 導入時に設定済み)。
+手順3で NAS に `docker login` しておけば、この config.json 経由で warranty_remember も
+自動的に認証される(追加設定は不要)。
+
 今すぐ反映したい場合だけ、Container Manager → プロジェクト `warranty_remember` → コンテナを**再作成**(pull し直し)。
 
 ---
@@ -95,7 +127,8 @@ SQLite と添付画像はどちらも `/docker/warranty_remember/data/` 配下(`
 
 | 症状 | 原因 / 対処 |
 |---|---|
-| プロジェクト起動時に `pull` が失敗する | 手順2〜3のGHCR認証が未設定、またはトークンの `read:packages` スコース漏れ。 |
+| プロジェクト起動時に `pull` が `denied`/`unauthorized` | `sudo docker pull ghcr.io/taaaaaaachu/warranty_remember:latest` で単体切り分け。それも失敗するなら手順2〜3(classic PAT・`docker login`)をやり直す。それで通るのにCM経由だけ失敗するなら、先にSSHでpullしておけば起動できる(既知の挙動)。 |
+| `manifest unknown` | 認証の問題ではなくタグが存在しない。GitHub Actionsの `build-push` が `main` で成功しているか確認(PR段階では配布されない)。 |
 | ログイン/登録で 403 | `.env` の `ORIGIN` が公開URLと不一致。修正して `app` を再起動。 |
 | 画像が表示されない | `data/uploads` の権限やボリュームマウントを確認。`UPLOAD_DIR=/data/uploads` はcompose側で固定済み。 |
 | Watchtowerが更新してくれない | 共用Watchtowerが動いているか、ラベル `com.centurylinklabs.watchtower.enable=true` が付いているかを確認。 |
