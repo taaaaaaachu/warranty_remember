@@ -37,7 +37,7 @@
 				return;
 			}
 		}
-		await goto(resolve('/'));
+		await goto(resolve('/'), { state: { highlightedEntryId: result.id } });
 	}
 </script>
 

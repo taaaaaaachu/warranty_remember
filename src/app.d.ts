@@ -17,7 +17,10 @@ declare global {
 			activeHousehold: { id: string; name: string; role: HouseholdRole } | null;
 		}
 		// interface PageData {}
-		// interface PageState {}
+		interface PageState {
+			/** 直前に作成した保証登録のid。一覧画面でカードを点滅させて示すために使う。 */
+			highlightedEntryId?: string;
+		}
 		// interface Platform {}
 	}
 }
