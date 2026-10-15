@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { HouseholdRole } from '$lib/rbac';
+import { isRecentlyVerified } from './auth';
 
 interface AuthedUser {
 	id: string;
@@ -9,9 +10,24 @@ interface AuthedUser {
 }
 
 /** ログイン必須。未ログインなら 401。 */
-export function requireUser(locals: App.Locals): AuthedUser {
+export function requireUser(locals: Pick<App.Locals, 'user'>): AuthedUser {
 	if (!locals.user) throw error(401, 'ログインが必要です。');
 	return locals.user;
+}
+
+/** 認証情報の変更で直近の本人確認を求める HTTP ステータス(428 Precondition Required)。 */
+export const REAUTH_REQUIRED = 428;
+
+/**
+ * ログイン必須かつ直近に本人確認(ログイン・再認証)済み。満たさなければ 428。
+ * 戻り値の sessionId は「操作端末以外のセッションを無効化」に使う。
+ */
+export function requireRecentAuth(locals: Pick<App.Locals, 'user' | 'session'>): AuthedUser & { sessionId: string } {
+	const user = requireUser(locals);
+	if (!locals.session || !isRecentlyVerified(locals.session.verifiedAt)) {
+		throw error(REAUTH_REQUIRED, '本人確認が必要です。');
+	}
+	return { ...user, sessionId: locals.session.id };
 }
 
 export interface ActiveContext {
