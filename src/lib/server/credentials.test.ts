@@ -10,7 +10,8 @@ import {
 	deletePasskey,
 	removePassword,
 	recordPasskeyUse,
-	normalizePasskeyName
+	normalizePasskeyName,
+	passwordChangeCheck
 } from './credentials';
 
 let db: Db;
@@ -38,6 +39,14 @@ describe('normalizePasskeyName', () => {
 		expect(normalizePasskeyName('')).toBe('パスキー');
 		expect(normalizePasskeyName(undefined)).toBe('パスキー');
 		expect(normalizePasskeyName('a'.repeat(51))).toBeNull();
+	});
+});
+
+describe('passwordChangeCheck', () => {
+	it('強制変更中は確認なし、パスワードありは常に現在のパスワード、なしは直近の本人確認', () => {
+		expect(passwordChangeCheck({ mustChangePassword: true }, true)).toBe('forced');
+		expect(passwordChangeCheck({ mustChangePassword: false }, true)).toBe('current_password');
+		expect(passwordChangeCheck({ mustChangePassword: false }, false)).toBe('recent_auth');
 	});
 });
 

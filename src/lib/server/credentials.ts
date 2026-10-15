@@ -44,6 +44,18 @@ export function getCredentialSummary(db: Db, userId: string): CredentialSummary 
 	};
 }
 
+/**
+ * パスワード変更・設定で求める確認。
+ * forced = 強制変更中(確認なし)、current_password = 現在のパスワード必須(直近の本人確認では代えない)、
+ * recent_auth = パスワードのないユーザーの新規設定(直近の本人確認)。
+ */
+export type PasswordChangeCheck = 'forced' | 'current_password' | 'recent_auth';
+
+export function passwordChangeCheck(user: { mustChangePassword: boolean }, hasPassword: boolean): PasswordChangeCheck {
+	if (user.mustChangePassword) return 'forced';
+	return hasPassword ? 'current_password' : 'recent_auth';
+}
+
 export function getPasskey(db: Db, id: string): PasskeyRow | undefined {
 	return db.select().from(passkeys).where(eq(passkeys.id, id)).get();
 }
