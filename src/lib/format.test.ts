@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, localDateInput, dateInputToTimestamp, formatDaysUntil } from './format';
+import { formatDate, formatDateTime, localDateInput, dateInputToTimestamp, formatDaysUntil } from './format';
+
+describe('formatDateTime', () => {
+	it('YYYY/MM/DD HH:MM 形式にし、nullは—', () => {
+		expect(formatDateTime(new Date(2024, 0, 5, 9, 3).getTime())).toBe('2024/01/05 09:03');
+		expect(formatDateTime(null)).toBe('—');
+	});
+});
 
 describe('formatDate', () => {
 	it('YYYY/MM/DD 形式にする', () => {

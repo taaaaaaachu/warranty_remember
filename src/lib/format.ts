@@ -8,6 +8,15 @@ export function formatDate(ms: number | null): string {
 	return `${y}/${m}/${day}`;
 }
 
+/** epoch ミリ秒を「YYYY/MM/DD HH:MM」で表す(ローカルタイム)。null は「—」。 */
+export function formatDateTime(ms: number | null): string {
+	if (ms === null || !Number.isFinite(ms)) return '—';
+	const d = new Date(ms);
+	const hh = String(d.getHours()).padStart(2, '0');
+	const mm = String(d.getMinutes()).padStart(2, '0');
+	return `${formatDate(ms)} ${hh}:${mm}`;
+}
+
 /** `<input type="date">` 用のローカル日付文字列(YYYY-MM-DD)。 */
 export function localDateInput(d: Date = new Date()): string {
 	const y = d.getFullYear();

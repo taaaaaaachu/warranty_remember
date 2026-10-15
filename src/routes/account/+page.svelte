@@ -1,10 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import { formatDate } from '$lib/format';
+	import { formatDate, formatDateTime } from '$lib/format';
 	import PasswordChangeForm from '$lib/components/PasswordChangeForm.svelte';
+	import {
+		ApiError,
+		REAUTH_REQUIRED,
+		addPasskey,
+		deletePasskey,
+		isPasskeyCancel,
+		reauthenticate,
+		removeOwnPassword,
+		renamePasskey
+	} from '$lib/passkeyClient';
 
 	let { data } = $props();
+	const creds = $derived(data.credentials);
+	/** パスワードなしで最後の1つなら、そのパスキーは消せない。 */
+	const lastPasskeyLocked = $derived(!creds.hasPassword && creds.passkeys.length <= 1);
 
 	let inviteCode = $state('');
 	let joinError = $state('');
@@ -28,6 +41,83 @@
 	let adminHouseholdName = $state('');
 	let adminHouseholdError = $state('');
 	let adminInviteCodes = $state<Record<string, string>>({});
+
+	// --- 本人確認(認証情報の変更・削除で 428 と言われたら、確認してから操作を再実行する) ---
+	let reauthRetry = $state<(() => void) | null>(null);
+	let reauthPassword = $state('');
+	let reauthError = $state('');
+
+	function requestReauth(retry: () => void) {
+		reauthError = '';
+		reauthRetry = retry;
+	}
+
+	async function confirmIdentity(password?: string) {
+		const retry = reauthRetry;
+		if (!retry) return;
+		reauthError = '';
+		busy = true;
+		try {
+			await reauthenticate(password);
+		} catch (err) {
+			if (!isPasskeyCancel(err)) reauthError = err instanceof Error ? err.message : '本人確認できませんでした。';
+			return;
+		} finally {
+			busy = false;
+		}
+		reauthRetry = null;
+		reauthPassword = '';
+		retry();
+	}
+
+	// --- ログイン方法(パスキー・パスワード削除) ---
+	let credError = $state('');
+	let credNotice = $state('');
+	let newPasskeyName = $state('');
+
+	/** 認証情報の操作を実行して画面を更新する。428 なら本人確認を挟んで再実行する。 */
+	async function runCredential(action: () => Promise<unknown>, done: string): Promise<boolean> {
+		credError = '';
+		credNotice = '';
+		busy = true;
+		try {
+			await action();
+			await invalidateAll();
+			credNotice = done;
+			return true;
+		} catch (err) {
+			if (err instanceof ApiError && err.status === REAUTH_REQUIRED) {
+				requestReauth(() => runCredential(action, done));
+			} else if (!isPasskeyCancel(err)) {
+				credError = err instanceof Error ? err.message : '操作に失敗しました。';
+			}
+			return false;
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function onAddPasskey(e: SubmitEvent) {
+		e.preventDefault();
+		const name = newPasskeyName;
+		if (await runCredential(() => addPasskey(name), 'パスキーを追加しました。')) newPasskeyName = '';
+	}
+
+	function onRenamePasskey(id: string, current: string) {
+		const name = window.prompt('パスキーの名前', current);
+		if (name === null || name.trim() === current) return;
+		runCredential(() => renamePasskey(id, name), 'パスキーの名前を変更しました。');
+	}
+
+	function onDeletePasskey(id: string, name: string) {
+		if (!window.confirm(`パスキー「${name}」を削除しますか?\nこの端末以外のログインはすべてログアウトされます。`)) return;
+		runCredential(() => deletePasskey(id), 'パスキーを削除しました。');
+	}
+
+	function onRemovePassword() {
+		if (!window.confirm('パスワードを削除して、パスキーでしかログインできないようにしますか?\nこの端末以外のログインはすべてログアウトされます。')) return;
+		runCredential(removeOwnPassword, 'パスワードを削除しました。');
+	}
 
 	async function copyInviteCode(code: string) {
 		try {
@@ -92,14 +182,28 @@
 	async function deleteAdminUser(user: AdminUser) {
 		const username = window.prompt(`削除するユーザー名「${user.username}」を入力してください。`);
 		if (username === null) return;
-		const password = window.prompt('操作するsuper_adminの現在のパスワードを入力してください。');
-		if (password === null) return;
+		// パスワードのない super_admin は、パスワードの代わりに本人確認(428 → 確認 → 再実行)で行う。
+		let password: string | undefined;
+		if (creds.hasPassword) {
+			const input = window.prompt('操作するsuper_adminの現在のパスワードを入力してください。');
+			if (input === null) return;
+			password = input;
+		}
+		await sendAdminDelete(user, username, password);
+	}
+
+	async function sendAdminDelete(user: AdminUser, username: string, password?: string) {
+		adminError = '';
 		const res = await fetch(`/api/admin/users/${user.id}`, {
 			method: 'DELETE',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ username, password })
 		});
 		const result = await res.json().catch(() => ({}));
+		if (res.status === REAUTH_REQUIRED) {
+			requestReauth(() => sendAdminDelete(user, username));
+			return;
+		}
 		if (!res.ok) {
 			adminError = result.message ?? 'ユーザーの削除に失敗しました。';
 			return;
@@ -107,15 +211,24 @@
 		adminUsers = adminUsers.filter((candidate) => candidate.id !== user.id);
 	}
 
-	async function deleteAccount(e: SubmitEvent) {
+	function deleteAccount(e: SubmitEvent) {
 		e.preventDefault();
+		sendDeleteAccount();
+	}
+
+	async function sendDeleteAccount() {
 		deleteError = '';
 		const res = await fetch('/api/account/delete', {
 			method: 'DELETE',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ username: deleteUsername, password: deletePassword })
+			// パスワードのないユーザーはパスワードを送らず、本人確認(428 → 確認 → 再実行)で行う。
+			body: JSON.stringify({ username: deleteUsername, password: creds.hasPassword ? deletePassword : undefined })
 		});
 		const result = await res.json().catch(() => ({}));
+		if (res.status === REAUTH_REQUIRED) {
+			requestReauth(sendDeleteAccount);
+			return;
+		}
 		if (!res.ok) {
 			deleteError = result.message ?? 'アカウントの削除に失敗しました。';
 			return;
@@ -263,7 +376,53 @@
 	{/if}
 </div>
 
-<PasswordChangeForm />
+<div style={section}>
+	<h2 style="margin:0 0 0.5rem; font-size:1rem;">パスキー</h2>
+	<p style="font-size:0.85rem; color:var(--muted); margin:0 0 0.6rem;">指紋・顔認証などで、パスワードを入力せずにログインできます。</p>
+	{#if creds.passkeys.length > 0}
+		<ul style="list-style:none; padding:0; margin:0 0 0.7rem; display:flex; flex-direction:column; gap:0.4rem;">
+			{#each creds.passkeys as pk (pk.id)}
+				<li style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; border:1px solid var(--border); border-radius:0.5rem; padding:0.5rem 0.7rem;">
+					<span style="display:flex; flex-direction:column; min-width:0;">
+						<b>{pk.name}</b>
+						<span style="color:var(--muted); font-size:0.8rem;">
+							登録 {formatDateTime(pk.createdAt)} ・ 最終使用 {pk.lastUsedAt ? formatDateTime(pk.lastUsedAt) : '未使用'}
+						</span>
+					</span>
+					<span style="margin-left:auto; display:flex; gap:0.4rem;">
+						<button type="button" disabled={busy} onclick={() => onRenamePasskey(pk.id, pk.name)} style="border:1px solid var(--border); background:var(--card); color:var(--fg); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">名前変更</button>
+						<button
+							type="button"
+							disabled={busy || lastPasskeyLocked}
+							title={lastPasskeyLocked ? 'パスワードがないため、最後のパスキーは削除できません' : undefined}
+							onclick={() => onDeletePasskey(pk.id, pk.name)}
+							style="border:1px solid var(--danger); background:var(--card); color:var(--danger); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">削除</button
+						>
+					</span>
+				</li>
+			{/each}
+		</ul>
+	{:else}
+		<p style="color:var(--muted); font-size:0.9rem;">まだ登録されていません。</p>
+	{/if}
+	<form onsubmit={onAddPasskey} style="display:flex; gap:0.5rem;">
+		<input bind:value={newPasskeyName} placeholder="名前(例: iPhone)" maxlength="50" style="flex:1; min-width:0;" />
+		<button type="submit" disabled={busy} style="background:var(--accent); color:#fff; border:none; border-radius:0.5rem; padding:0.4rem 0.8rem; cursor:pointer;">パスキーを追加</button>
+	</form>
+	{#if creds.hasPassword}
+		<h3 style="margin:1rem 0 0.4rem; font-size:0.95rem;">パスワードの削除</h3>
+		{#if creds.passkeys.length > 0}
+			<p style="font-size:0.85rem; color:var(--muted); margin:0 0 0.5rem;">パスワードを削除すると、パスキーでしかログインできなくなります。</p>
+			<button type="button" disabled={busy} onclick={onRemovePassword} style="border:1px solid var(--danger); background:var(--card); color:var(--danger); border-radius:0.4rem; padding:0.4rem 0.8rem; cursor:pointer;">パスワードを削除</button>
+		{:else}
+			<p style="font-size:0.85rem; color:var(--muted); margin:0;">パスワードを削除するには、先にパスキーを登録してください。</p>
+		{/if}
+	{/if}
+	{#if credError}<p style="color:var(--danger); margin:0.6rem 0 0;">{credError}</p>{/if}
+	{#if credNotice}<p style="color:var(--ok); margin:0.6rem 0 0;">{credNotice}</p>{/if}
+</div>
+
+<PasswordChangeForm hasPassword={creds.hasPassword} {requestReauth} />
 
 <div style={section}>
 	<h2 style="margin:0 0 0.5rem; font-size:1rem;">所属している世帯</h2>
@@ -383,7 +542,7 @@
 	</div>
 	<div style={section}>
 		<h2 style="margin:0 0 0.5rem; font-size:1rem;">ユーザーパスワードのリセット</h2>
-		<p style="font-size:0.85rem; color:var(--muted);">リセットすると対象ユーザーの全セッションが無効になり、次回ログイン時に変更が必要になります。</p>
+		<p style="font-size:0.85rem; color:var(--muted);">リセットすると対象ユーザーの全セッションが無効になり、登録済みのパスキーもすべて削除されます。対象ユーザーは一時パスワードでログインし、パスワードの変更が必要になります。</p>
 		{#if adminUsers.length === 0}
 			<p style="color:var(--muted);">自分以外のユーザーはいません。</p>
 		{:else}
@@ -399,7 +558,7 @@
 		{/if}
 		{#if adminError}<p style="color:var(--danger);">{adminError}</p>{/if}
 		{#if resetResult}
-			<p style="color:var(--warn);">ユーザー <b>{resetResult.username}</b> の一時パスワード(この画面でのみ表示):</p>
+			<p style="color:var(--warn);">ユーザー <b>{resetResult.username}</b> のパスキーを削除し、一時パスワードを発行しました(この画面でのみ表示):</p>
 			<code style="display:block; user-select:all; padding:0.5rem; background:var(--bg);">{resetResult.password}</code>
 		{/if}
 	</div>
@@ -429,7 +588,11 @@
 			<p style="font-size:0.85rem; color:var(--muted);">この操作は取り消せません。ownerになっている世帯がある場合は、先にownerを委任してください。</p>
 			<form onsubmit={deleteAccount} style="display:flex; flex-direction:column; gap:0.5rem;">
 				<input bind:value={deleteUsername} placeholder="ユーザー名" autocomplete="username" required />
-				<input bind:value={deletePassword} type="password" placeholder="現在のパスワード" autocomplete="current-password" required />
+				{#if creds.hasPassword}
+					<input bind:value={deletePassword} type="password" placeholder="現在のパスワード" autocomplete="current-password" required />
+				{:else}
+					<p style="font-size:0.85rem; color:var(--muted); margin:0;">削除する前に、パスキーで本人確認をすることがあります。</p>
+				{/if}
 				<div style="display:flex; justify-content:flex-end; gap:0.5rem;">
 					<button
 						type="button"
@@ -442,6 +605,32 @@
 				</div>
 			</form>
 			{#if deleteError}<p style="color:var(--danger);">{deleteError}</p>{/if}
+		</div>
+	</div>
+{/if}
+
+{#if reauthRetry}
+	<div style="position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; padding:1rem; background:rgba(0,0,0,0.45);">
+		<div role="dialog" aria-modal="true" aria-labelledby="reauth-title" style="width:min(100%, 24rem); background:var(--card); border:1px solid var(--border); border-radius:0.6rem; padding:1rem; display:flex; flex-direction:column; gap:0.6rem;">
+			<h2 id="reauth-title" style="margin:0; font-size:1rem;">本人確認</h2>
+			<p style="font-size:0.85rem; color:var(--muted); margin:0;">この操作を続けるため、本人確認をしてください。</p>
+			{#if creds.passkeys.length > 0}
+				<button type="button" disabled={busy} onclick={() => confirmIdentity()} style="background:var(--accent); color:#fff; border:none; border-radius:0.5rem; padding:0.5rem; cursor:pointer;">パスキーで確認</button>
+			{/if}
+			{#if creds.hasPassword}
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						confirmIdentity(reauthPassword);
+					}}
+					style="display:flex; flex-direction:column; gap:0.5rem;"
+				>
+					<input bind:value={reauthPassword} type="password" placeholder="現在のパスワード" autocomplete="current-password" required />
+					<button type="submit" disabled={busy}>パスワードで確認</button>
+				</form>
+			{/if}
+			{#if reauthError}<p style="color:var(--danger); margin:0;">{reauthError}</p>{/if}
+			<button type="button" onclick={() => (reauthRetry = null)} style="align-self:flex-end; border:none; background:none; color:var(--muted); cursor:pointer;">やめる</button>
 		</div>
 	</div>
 {/if}
