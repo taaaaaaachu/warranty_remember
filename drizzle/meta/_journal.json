@@ -8,6 +8,13 @@
       "when": 1789189506963,
       "tag": "0000_same_rumiko_fujikawa",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792080353368,
+      "tag": "0001_mean_talos",
+      "breakpoints": true
     }
   ]
 }

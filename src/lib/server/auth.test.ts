@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { createDb, type Db } from './db';
-import { changePassword, deleteUserAccount, hashSessionToken, listUsers, resetPassword } from './auth';
+import { changePassword, deleteUserAccount, hashPassword, hashSessionToken, listUsers, resetPassword, verifyUserPassword } from './auth';
 import { sessions, users, memberships, invites } from './db/schema';
 import { createHousehold } from './households';
 
@@ -77,5 +77,16 @@ describe('パスワードセッション管理', () => {
 	it('最後のsuper_adminは削除できない', () => {
 		db.update(users).set({ instanceRole: 'super_admin' }).where(eq(users.id, user.id)).run();
 		expect(deleteUserAccount(user.id, db)).toEqual({ ok: false, error: 'last_super_admin' });
+	});
+});
+
+describe('verifyUserPassword', () => {
+	it('正しいパスワードだけ通し、パスワードなし(パスキーのみ)のユーザーは常に失敗', async () => {
+		db.update(users).set({ passwordHash: await hashPassword('password123') }).where(eq(users.id, user.id)).run();
+		expect(await verifyUserPassword(user.id, 'password123', db)).toBe(true);
+		expect(await verifyUserPassword(user.id, 'wrong-password', db)).toBe(false);
+
+		db.update(users).set({ passwordHash: null }).where(eq(users.id, user.id)).run();
+		expect(await verifyUserPassword(user.id, 'password123', db)).toBe(false);
 	});
 });
