@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { eq } from 'drizzle-orm';
 import { createDb, type Db } from './db';
+import { users, passkeys } from './db/schema';
 import {
 	countUsers,
 	createHousehold,
@@ -16,7 +18,8 @@ import {
 	joinHouseholdByInvite,
 	listPendingOwnershipTransfers,
 	listHouseholdSummaries,
-	removeHouseholdMember
+	removeHouseholdMember,
+	precheckRegistration
 } from './households';
 
 let db: Db;
@@ -190,5 +193,60 @@ describe('管理画面の世帯情報', () => {
 		expect(listHouseholdSummaries(db)).toEqual([
 			expect.objectContaining({ name: '自宅', memberCount: 1, ownerCount: 1, entryCount: 0, activeInviteCount: 0 })
 		]);
+	});
+});
+
+describe('パスキーでの登録', () => {
+	const passkey = { id: 'cred-1', publicKey: Buffer.from([1]), counter: 0, transports: null, name: 'iPhone', createdAt: 0 };
+
+	it('ブートストラップをパスキーだけで行うと super_admin になり、世帯名どおりの世帯の owner になる', () => {
+		const r = registerUser(db, { id: 'fixed-id', username: 'alice', passwordHash: null, passkey, requireInvite: false, householdName: '実家' });
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.user).toMatchObject({ id: 'fixed-id', passwordHash: null, instanceRole: 'super_admin' });
+		expect(listUserHouseholds(db, 'fixed-id')).toEqual([{ id: r.householdId, name: '実家', role: 'owner' }]);
+		expect(db.select().from(passkeys).all().map((p) => [p.id, p.userId])).toEqual([['cred-1', 'fixed-id']]);
+	});
+
+	it('招待経由でパスキーだけで登録すると、招待先の世帯に参加し招待が消費される', () => {
+		const owner = registerUser(db, { username: 'alice', passwordHash: 'x', requireInvite: false });
+		if (!owner.ok) throw new Error('setup failed');
+		const invite = createInvite(db, owner.householdId, owner.user.id, null);
+		const r = registerUser(db, { username: 'bob', passwordHash: null, passkey, requireInvite: true, inviteCode: invite.code });
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(getMembership(db, r.user.id, owner.householdId)).toBe('member');
+		expect(listHouseholdInvites(db, owner.householdId)[0].state).toBe('used');
+	});
+
+	it('招待が不正なら、ユーザーもパスキーも保存されない', () => {
+		registerUser(db, { username: 'alice', passwordHash: 'x', requireInvite: false });
+		const r = registerUser(db, { username: 'bob', passwordHash: null, passkey, requireInvite: true, inviteCode: 'nope' });
+		expect(r).toEqual({ ok: false, error: 'invite_invalid' });
+		expect(db.select().from(passkeys).all()).toHaveLength(0);
+		expect(db.select().from(users).where(eq(users.username, 'bob')).get()).toBeUndefined();
+	});
+
+	it('パスワードもパスキーも無い登録は例外', () => {
+		expect(() => registerUser(db, { username: 'x', passwordHash: null, requireInvite: false })).toThrow();
+	});
+});
+
+describe('precheckRegistration', () => {
+	it('招待の不備(種別つき)とユーザー名重複を事前に返し、問題なければ null', () => {
+		const owner = registerUser(db, { username: 'owner', passwordHash: 'x', requireInvite: false });
+		if (!owner.ok) throw new Error('setup failed');
+		const inv = createInvite(db, owner.householdId, owner.user.id, null);
+		const revoked = createInvite(db, owner.householdId, owner.user.id, null);
+		revokeInvite(db, owner.householdId, revoked.id);
+		const expired = createInvite(db, owner.householdId, owner.user.id, Date.now() - 1);
+
+		expect(precheckRegistration(db, { username: 'new', requireInvite: true, inviteCode: 'nope' })).toBe('invite_invalid');
+		expect(precheckRegistration(db, { username: 'new', requireInvite: true, inviteCode: revoked.code })).toBe('invite_revoked');
+		expect(precheckRegistration(db, { username: 'new', requireInvite: true, inviteCode: expired.code })).toBe('invite_expired');
+		expect(precheckRegistration(db, { username: 'owner', requireInvite: true, inviteCode: inv.code })).toBe('username_taken');
+		expect(precheckRegistration(db, { username: 'new', requireInvite: true, inviteCode: inv.code })).toBeNull();
+		// 事前検証では招待を消費しない。
+		expect(listHouseholdInvites(db, owner.householdId).find((i) => i.id === inv.id)?.state).toBe('active');
 	});
 });
