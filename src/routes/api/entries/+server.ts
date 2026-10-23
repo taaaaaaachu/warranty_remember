@@ -1,9 +1,9 @@
-import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { createWarrantyEntry, listWarrantyEntries } from '$lib/server/warranty';
-import { requireHousehold } from '$lib/server/apiGuard';
-import { canEditEntries } from '$lib/rbac';
-import { validateWarrantyEntryInput, isWarrantyEntryInputError } from '$lib/server/inputValidation';
+import { error } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.js';
+import { createWarrantyEntry, listWarrantyEntries } from '#lib/server/warranty.js';
+import { requireHousehold } from '#lib/server/apiGuard.js';
+import { canEditEntries } from '#lib/rbac.js';
+import { validateWarrantyEntryInput, isWarrantyEntryInputError } from '#lib/server/inputValidation.js';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = ({ locals, url }) => {
@@ -11,7 +11,7 @@ export const GET: RequestHandler = ({ locals, url }) => {
 	const archived = url.searchParams.get('archived') === '1';
 	const category = url.searchParams.get('category') ?? undefined;
 	const query = url.searchParams.get('q') ?? undefined;
-	return json(listWarrantyEntries(db, householdId, { archived, category, query }));
+	return Response.json(listWarrantyEntries(db, householdId, { archived, category, query }));
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -22,5 +22,5 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const input = validateWarrantyEntryInput(body);
 	if (isWarrantyEntryInputError(input)) throw error(400, input.message);
 	const entry = createWarrantyEntry(db, householdId, input);
-	return json(entry, { status: 201 });
+	return Response.json(entry, { status: 201 });
 };

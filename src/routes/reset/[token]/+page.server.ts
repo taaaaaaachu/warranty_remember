@@ -1,9 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { createSession, hashPassword, validatePassword } from '$lib/server/auth';
-import { setSessionCookie } from '$lib/server/sessionCookie';
-import { resetUserAuthRateLimitById } from '$lib/server/authRateLimit';
-import { consumeResetLink, findResetLink, RESET_LINK_INVALID } from '$lib/server/resetLinks';
+import { db } from '#lib/server/db/index.js';
+import { createSession, hashPassword, validatePassword } from '#lib/server/auth.js';
+import { setSessionCookie } from '#lib/server/sessionCookie.js';
+import { resetUserAuthRateLimitById } from '#lib/server/authRateLimit.js';
+import { consumeResetLink, findResetLink, RESET_LINK_INVALID } from '#lib/server/resetLinks.js';
 import type { Actions, PageServerLoad } from './$types';
 
 /** リセットリンク(docs/adr/0003)。別のユーザーでログイン中でも開ける。 */

@@ -1,10 +1,11 @@
-import { redirect, type Handle } from '@sveltejs/kit';
-import { SESSION_COOKIE, validateSessionToken, invalidateSession } from '$lib/server/auth';
-import { HOUSEHOLD_COOKIE } from '$lib/server/sessionCookie';
-import { db } from '$lib/server/db';
-import { listUserHouseholds } from '$lib/server/households';
-import { dev } from '$app/environment';
-import { allowedWithTemporaryPassword } from '$lib/server/apiGuard';
+import { redirect } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
+import { SESSION_COOKIE, validateSessionToken, invalidateSession } from '#lib/server/auth.js';
+import { HOUSEHOLD_COOKIE } from '#lib/server/sessionCookie.js';
+import { db } from '#lib/server/db/index.js';
+import { listUserHouseholds } from '#lib/server/households.js';
+import { dev } from '$app/env';
+import { allowedWithTemporaryPassword } from '#lib/server/apiGuard.js';
 
 function cookieOpts(expires: Date) {
 	return { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: !dev, expires };

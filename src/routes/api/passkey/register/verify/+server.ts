@@ -1,13 +1,13 @@
-import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { createSession } from '$lib/server/auth';
-import { setSessionCookie, setHouseholdCookie } from '$lib/server/sessionCookie';
-import { requireRecentAuth } from '$lib/server/apiGuard';
-import { addPasskey, normalizePasskeyName } from '$lib/server/credentials';
-import { countUsers, registerUser, REGISTER_ERROR_MESSAGES } from '$lib/server/households';
-import { takeChallenge, verifyRegistration } from '$lib/server/webauthn';
-import { consumeResetLink, RESET_LINK_INVALID } from '$lib/server/resetLinks';
-import { resetUserAuthRateLimitById } from '$lib/server/authRateLimit';
+import { error } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.js';
+import { createSession } from '#lib/server/auth.js';
+import { setSessionCookie, setHouseholdCookie } from '#lib/server/sessionCookie.js';
+import { requireRecentAuth } from '#lib/server/apiGuard.js';
+import { addPasskey, normalizePasskeyName } from '#lib/server/credentials.js';
+import { countUsers, registerUser, REGISTER_ERROR_MESSAGES } from '#lib/server/households.js';
+import { takeChallenge, verifyRegistration } from '#lib/server/webauthn.js';
+import { consumeResetLink, RESET_LINK_INVALID } from '#lib/server/resetLinks.js';
+import { resetUserAuthRateLimitById } from '#lib/server/authRateLimit.js';
 import type { RequestHandler } from './$types';
 
 /** パスキー登録の完了。body: { response, name }。 */
@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies, url }) =>
 		resetUserAuthRateLimitById(userId, db);
 		const { token, expiresAt } = createSession(userId);
 		setSessionCookie(cookies, token, expiresAt);
-		return json({ ok: true });
+		return Response.json({ ok: true });
 	}
 
 	if (pending.kind === 'add') {
@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ locals, request, cookies, url }) =>
 		} catch {
 			throw error(409, 'このパスキーは登録済みです。');
 		}
-		return json({ ok: true });
+		return Response.json({ ok: true });
 	}
 
 	// 招待の要否は確定時点で判定し直す(開始後に別の人がブートストラップした場合に備える)。
@@ -67,5 +67,5 @@ export const POST: RequestHandler = async ({ locals, request, cookies, url }) =>
 	const { token, expiresAt } = createSession(result.user.id);
 	setSessionCookie(cookies, token, expiresAt);
 	setHouseholdCookie(cookies, result.householdId);
-	return json({ ok: true });
+	return Response.json({ ok: true });
 };

@@ -1,9 +1,9 @@
-import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { getWarrantyEntry, addAttachment, listAttachments } from '$lib/server/warranty';
-import { saveAttachmentFile } from '$lib/server/attachmentStorage';
-import { requireHousehold } from '$lib/server/apiGuard';
-import { canEditEntries } from '$lib/rbac';
+import { error } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.js';
+import { getWarrantyEntry, addAttachment, listAttachments } from '#lib/server/warranty.js';
+import { saveAttachmentFile } from '#lib/server/attachmentStorage.js';
+import { requireHousehold } from '#lib/server/apiGuard.js';
+import { canEditEntries } from '#lib/rbac.js';
 import type { RequestHandler } from './$types';
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -11,7 +11,7 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const GET: RequestHandler = ({ locals, params }) => {
 	const { householdId } = requireHousehold(locals);
 	if (!getWarrantyEntry(db, householdId, params.id)) throw error(404, '保証登録が見つかりません。');
-	return json(listAttachments(db, params.id));
+	return Response.json(listAttachments(db, params.id));
 };
 
 /** 添付画像をアップロードする。multipart/form-data の "files" フィールド(複数可)。 */
@@ -33,5 +33,5 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const saved = await saveAttachmentFile(householdId, params.id, buffer);
 		created.push(addAttachment(db, params.id, saved.relativePath, saved.mimeType));
 	}
-	return json(created, { status: 201 });
+	return Response.json(created, { status: 201 });
 };

@@ -1,5 +1,5 @@
 import type { Cookies } from '@sveltejs/kit';
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 import { SESSION_COOKIE } from './auth';
 
 /** 現在の世帯を保持する Cookie 名。 */

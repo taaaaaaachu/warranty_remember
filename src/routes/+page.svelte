@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { formatDate, formatDaysUntil } from '$lib/format';
-	import { daysUntil } from '$lib/domain/warrantyEntry';
+	import { formatDate, formatDaysUntil } from '#lib/format.js';
+	import { daysUntil } from '#lib/domain/warrantyEntry.js';
 
 	let { data } = $props();
 

@@ -9,14 +9,14 @@ import {
 	type RegistrationResponseJSON,
 	type AuthenticationResponseJSON
 } from '@simplewebauthn/server';
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 import type { Db } from './db';
 import type { PasskeyRow } from './db/schema';
 import { getPasskey, recordPasskeyUse } from './credentials';
 
 /**
  * WebAuthn(パスキー)の儀式まわり。RP ID / オリジンはリクエスト URL から取る
- * (本番は adapter-node の ORIGIN で公開ドメインになる)。
+ * (本番は cloudflared が転送する Host ヘッダーから公開ドメインになる)。
  */
 
 const RP_NAME = 'Warranty Remember';

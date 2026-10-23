@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import WarrantyEntryForm from '$lib/components/WarrantyEntryForm.svelte';
+	import WarrantyEntryForm from '#lib/components/WarrantyEntryForm.svelte';
 
 	let selectedFiles = $state<File[]>([]);
 	let uploadError = $state('');

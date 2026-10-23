@@ -1,8 +1,5 @@
-/// <reference types="@sveltejs/kit" />
-/// <reference lib="webworker" />
+import { self as sw } from '$app/service-worker';
 
-// 型のためのキャスト(Service Worker のグローバル)。
-const sw = self as unknown as ServiceWorkerGlobalScope;
 const OFFLINE_CACHE = 'warranty-remember-offline-v1';
 const OFFLINE_URL = '/offline.html';
 

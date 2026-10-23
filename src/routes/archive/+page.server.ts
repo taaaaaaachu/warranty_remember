@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { listWarrantyEntries } from '$lib/server/warranty';
+import { db } from '#lib/server/db/index.js';
+import { listWarrantyEntries } from '#lib/server/warranty.js';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals }) => {

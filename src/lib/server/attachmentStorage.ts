@@ -2,13 +2,13 @@ import { mkdir, writeFile, unlink, readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import sharp from 'sharp';
-import { env } from '$env/dynamic/private';
+import { UPLOAD_DIR } from '$app/env/private';
 
 const MAX_DIMENSION = 1920;
 const JPEG_QUALITY = 82;
 
 export function resolveUploadDir(): string {
-	return env.UPLOAD_DIR ?? './data/uploads';
+	return UPLOAD_DIR;
 }
 
 /**

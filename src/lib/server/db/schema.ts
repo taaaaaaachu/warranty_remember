@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, index, unique, blob } from 'drizzle-orm/sqlite-core';
 
-import type { InstanceRole, HouseholdRole } from '$lib/rbac';
+import type { InstanceRole, HouseholdRole } from '#lib/rbac.js';
 export type { InstanceRole, HouseholdRole };
 
 /**

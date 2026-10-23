@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { invalidate, invalidateAll } from '$app/navigation';
-	import { formatDate, formatDateTime } from '$lib/format';
-	import PasswordChangeForm from '$lib/components/PasswordChangeForm.svelte';
+	import { invalidate, refreshAll } from '$app/navigation';
+	import { formatDate, formatDateTime } from '#lib/format.js';
+	import PasswordChangeForm from '#lib/components/PasswordChangeForm.svelte';
 	import {
 		ApiError,
 		REAUTH_REQUIRED,
@@ -12,7 +12,7 @@
 		reauthenticate,
 		removeOwnPassword,
 		renamePasskey
-	} from '$lib/passkeyClient';
+	} from '#lib/passkeyClient.js';
 
 	let { data } = $props();
 	const creds = $derived(data.credentials);
@@ -84,7 +84,7 @@
 		busy = true;
 		try {
 			await action();
-			await invalidateAll();
+			await refreshAll();
 			credNotice = done;
 			return true;
 		} catch (err) {
@@ -160,7 +160,7 @@
 			return;
 		}
 		inviteCode = '';
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function resetUser(user: AdminUser) {
@@ -294,7 +294,7 @@
 				memberError = result.message ?? 'managerの任命に失敗しました。';
 				return;
 			}
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			busy = false;
 		}
@@ -310,7 +310,7 @@
 				memberError = result.message ?? 'managerの解任に失敗しました。';
 				return;
 			}
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			busy = false;
 		}
@@ -326,7 +326,7 @@
 				memberError = result.message ?? 'メンバーの除名に失敗しました。';
 				return;
 			}
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			busy = false;
 		}
@@ -350,7 +350,7 @@
 			const json = await res.json();
 			lastCode = json.code ?? null;
 			if (lastCode) await copyInviteCode(lastCode);
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			busy = false;
 		}
@@ -358,16 +358,16 @@
 
 	async function revoke(id: string) {
 		await fetch(`/api/invites/${id}/revoke`, { method: 'POST' });
-		await invalidateAll();
+		await refreshAll();
 	}
 	async function remove(id: string) {
 		await fetch(`/api/invites/${id}`, { method: 'DELETE' });
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function acceptTransfer(id: string, accept: boolean) {
 		await fetch(`/api/households/transfers/${id}/${accept ? 'accept' : 'reject'}`, { method: 'POST' });
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function createAdminHousehold(e: SubmitEvent) {

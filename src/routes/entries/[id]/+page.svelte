@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, refreshAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import WarrantyEntryForm from '$lib/components/WarrantyEntryForm.svelte';
+	import WarrantyEntryForm from '#lib/components/WarrantyEntryForm.svelte';
 
 	let { data } = $props();
 
@@ -18,7 +18,7 @@
 		});
 		const result = await res.json().catch(() => ({}));
 		if (!res.ok) return result.message ?? '更新に失敗しました。';
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function uploadFiles(e: Event) {
@@ -37,7 +37,7 @@
 				return;
 			}
 			input.value = '';
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			uploading = false;
 		}
@@ -45,7 +45,7 @@
 
 	async function deleteAttachment(attachmentId: string) {
 		await fetch(`/api/entries/${data.entry.id}/attachments/${attachmentId}`, { method: 'DELETE' });
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function toggleArchive() {
@@ -56,7 +56,7 @@
 			actionError = (await res.json().catch(() => ({}))).message ?? '操作に失敗しました。';
 			return;
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function deleteEntry() {

@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { ApiError, REAUTH_REQUIRED, addPasskey, isPasskeyCancel, reauthenticate } from '$lib/passkeyClient';
+	import { refreshAll } from '$app/navigation';
+	import { ApiError, REAUTH_REQUIRED, addPasskey, isPasskeyCancel, reauthenticate } from '#lib/passkeyClient.js';
 
 	let {
 		forced = false,
 		hasPassword = true,
 		requestReauth
-	} = $props<{
+	}: {
 		forced?: boolean;
 		/** false ならパスワードの新規設定(現在のパスワード欄なし・直近の本人確認で行う)。 */
 		hasPassword?: boolean;
 		/** 本人確認が必要(428)と言われたときに呼ぶ。確認できたら retry で送り直す。 */
 		requestReauth?: (retry: () => void) => void;
-	}>();
+	} = $props();
 	const askCurrent = $derived(!forced && hasPassword);
 	let currentPassword = $state('');
 	let newPassword = $state('');
@@ -49,7 +49,7 @@
 		busy = true;
 		try {
 			await addPasskey(passkeyName);
-			await invalidateAll();
+			await refreshAll();
 		} catch (err) {
 			if (err instanceof ApiError && err.status === REAUTH_REQUIRED) forcedRetry = () => registerPasskey();
 			else if (!isPasskeyCancel(err)) errorMessage = err instanceof Error ? err.message : 'パスキーを登録できませんでした。';
@@ -86,7 +86,7 @@
 			newPassword = '';
 			confirmPassword = '';
 			successMessage = hasPassword ? 'パスワードを変更しました。' : 'パスワードを設定しました。';
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			busy = false;
 		}

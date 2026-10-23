@@ -1,13 +1,13 @@
-import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { createInvite, listHouseholdInvites } from '$lib/server/households';
-import { requireInstanceAdmin } from '$lib/server/apiGuard';
-import { parsePositiveInteger } from '$lib/server/inputValidation';
+import { error } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.js';
+import { createInvite, listHouseholdInvites } from '#lib/server/households.js';
+import { requireInstanceAdmin } from '#lib/server/apiGuard.js';
+import { parsePositiveInteger } from '#lib/server/inputValidation.js';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = ({ locals, params }) => {
 	requireInstanceAdmin(locals);
-	return json(listHouseholdInvites(db, params.id));
+	return Response.json(listHouseholdInvites(db, params.id));
 };
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
@@ -20,5 +20,5 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
 	}
 	const invite = createInvite(db, params.id, user.id, expiresAt);
-	return json({ id: invite.id, code: invite.code }, { status: 201 });
+	return Response.json({ id: invite.id, code: invite.code }, { status: 201 });
 };

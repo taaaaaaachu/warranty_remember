@@ -22,14 +22,14 @@
 
 | 区分 | 採用技術 |
 |---|---|
-| フロントエンド / サーバー | SvelteKit 2(Svelte 5 runes モード)+ TypeScript 6、adapter-node によるフルスタック1本構成 |
+| フロントエンド / サーバー | SvelteKit 3(Svelte 5 runes モード)+ TypeScript 6、adapter-node によるフルスタック1本構成 |
 | DB | SQLite(better-sqlite3)+ Drizzle ORM / drizzle-kit によるマイグレーション |
 | 認証 | サーバーセッション(httpOnly Cookie)、パスワードは Argon2(`@node-rs/argon2`)、パスキーは SimpleWebAuthn(`@simplewebauthn/server` / `browser` v14) |
 | 画像処理・ストレージ | sharp でリサイズ・圧縮し、ローカルファイルシステムに保存 |
 | PWA | Web App Manifest + Service Worker |
 | インフラ | Docker(マルチステージビルド、Node.js 22)、GHCR、Watchtower による自動更新、Cloudflare Tunnel 経由で公開 |
 | CI/CD | GitHub Actions(ESLint・svelte-check・Vitest → main のみイメージをビルドして GHCR へ push) |
-| テスト | Vitest 4 |
+| テスト | Vitest 5 |
 
 ## アーキテクチャと設計判断
 
@@ -86,7 +86,7 @@ SvelteKit(adapter-node / Node.js 22, Docker コンテナ)
 
 ## ローカルでの起動方法
 
-Node.js 22 を想定(CI・Docker イメージと同じ)。
+Node.js 22.17 以上を想定(SvelteKit 3 の要件。CI と Docker イメージは Node.js 22 系の最新)。
 
 ```bash
 npm ci
@@ -112,6 +112,8 @@ Docker で本番同等の構成を手元で確認する場合:
 ```bash
 docker compose -f docker-compose.local.yml up --build   # http://localhost:3000
 ```
+
+公開オリジンは、本番(Cloudflare Tunnel 配下)では指定しない。cloudflared が転送する Host ヘッダーと https から決まる。ローカル用 compose は http でアクセスするので、ビルド引数 `ORIGIN=http://localhost:3000` で焼き込んでいる(SvelteKit 3 は実行時の `ORIGIN` 環境変数を読まない)。オリジンが実際のアクセス先と違うと、フォームの POST が CSRF 対策で 403 になり、パスキーの検証も失敗する。
 
 ## デプロイ
 

@@ -1,12 +1,12 @@
-import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { createHousehold, listHouseholdSummaries } from '$lib/server/households';
-import { requireInstanceAdmin } from '$lib/server/apiGuard';
+import { error } from '@sveltejs/kit';
+import { db } from '#lib/server/db/index.js';
+import { createHousehold, listHouseholdSummaries } from '#lib/server/households.js';
+import { requireInstanceAdmin } from '#lib/server/apiGuard.js';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = ({ locals }) => {
 	requireInstanceAdmin(locals);
-	return json(listHouseholdSummaries(db));
+	return Response.json(listHouseholdSummaries(db));
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -15,5 +15,5 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const name = typeof body?.name === 'string' ? body.name.trim() : '';
 	if (!name) throw error(400, '世帯名は必須です。');
 	const household = createHousehold(db, name);
-	return json({ id: household.id, name: household.name }, { status: 201 });
+	return Response.json({ id: household.id, name: household.name }, { status: 201 });
 };

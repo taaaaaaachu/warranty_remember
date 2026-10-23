@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { enhance, type SubmitFunction } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { SubmitFunction } from '@sveltejs/kit';
-	import { signupWithPasskey, isPasskeyCancel } from '$lib/passkeyClient';
+	import { signupWithPasskey, isPasskeyCancel } from '#lib/passkeyClient.js';
 	let { data, form } = $props();
 
 	let method = $state<'passkey' | 'password'>('passkey');
@@ -26,7 +25,7 @@
 				invite: String(fd.get('invite') ?? ''),
 				household: String(fd.get('household') ?? '')
 			});
-			await goto(resolve('/'), { invalidateAll: true });
+			await goto(resolve('/'), { refreshAll: true });
 		} catch (err) {
 			if (!isPasskeyCancel(err)) passkeyError = err instanceof Error ? err.message : '登録に失敗しました。';
 		} finally {

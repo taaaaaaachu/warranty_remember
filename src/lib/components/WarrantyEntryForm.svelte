@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { localDateInput } from '$lib/format';
+	import { localDateInput } from '#lib/format.js';
 
 	interface InitialValues {
 		name?: string;

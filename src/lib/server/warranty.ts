@@ -3,7 +3,7 @@ import { and, eq, isNull, isNotNull, desc, asc, like, or } from 'drizzle-orm';
 import type { Db } from './db';
 import { warrantyEntries, attachments, type WarrantyEntryRow, type AttachmentRow } from './db/schema';
 import type { WarrantyEntryInput } from './inputValidation';
-import { resolveWarrantyEndAt } from '$lib/domain/warrantyEntry';
+import { resolveWarrantyEndAt } from '#lib/domain/warrantyEntry.js';
 
 function newId(): string {
 	return randomBytes(16).toString('hex');

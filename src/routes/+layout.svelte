@@ -2,10 +2,10 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { version } from '$app/environment';
-	import { invalidate, invalidateAll } from '$app/navigation';
+	import { version } from '$app/env';
+	import { invalidate, refreshAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import PasswordChangeForm from '$lib/components/PasswordChangeForm.svelte';
+	import PasswordChangeForm from '#lib/components/PasswordChangeForm.svelte';
 
 	let { data, children } = $props();
 	// 仮パスワードなら変更画面を出す。リセットリンクは別のユーザーのものかもしれないのでそのまま開く(docs/adr/0003)。
@@ -27,7 +27,8 @@
 
 		// ビルドごとにURLを変え、CDNに残った旧service-worker.jsを再利用させない。
 		navigator.serviceWorker
-			.register(`/service-worker.js?v=${encodeURIComponent(version)}`)
+			// SvelteKit 3 は Service Worker を ES モジュールとしてバンドルする。
+			.register(`/service-worker.js?v=${encodeURIComponent(version)}`, { type: 'module' })
 			.catch((error: unknown) => console.error('Service Workerの登録に失敗しました', error));
 	}
 
@@ -44,7 +45,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ householdId: id })
 		});
-		await invalidateAll();
+		await refreshAll();
 	}
 </script>
 

@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { browserSupportsWebAuthnAutofill } from '@simplewebauthn/browser';
-	import { loginWithPasskey, isPasskeyCancel } from '$lib/passkeyClient';
+	import { loginWithPasskey, isPasskeyCancel } from '#lib/passkeyClient.js';
 	let { form, data } = $props();
 
 	let passkeyError = $state('');
@@ -13,7 +13,7 @@
 	async function passkeyLogin(useBrowserAutofill: boolean) {
 		try {
 			await loginWithPasskey(useBrowserAutofill);
-			await goto(resolve('/'), { invalidateAll: true });
+			await goto(resolve('/'), { refreshAll: true });
 		} catch (err) {
 			if (isPasskeyCancel(err)) return;
 			passkeyError = err instanceof Error ? err.message : 'パスキーでログインできませんでした。';

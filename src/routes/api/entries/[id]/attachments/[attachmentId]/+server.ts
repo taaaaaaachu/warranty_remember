@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { getWarrantyEntry, deleteAttachment } from '$lib/server/warranty';
-import { deleteAttachmentFile } from '$lib/server/attachmentStorage';
-import { requireHousehold } from '$lib/server/apiGuard';
-import { canEditEntries } from '$lib/rbac';
+import { db } from '#lib/server/db/index.js';
+import { getWarrantyEntry, deleteAttachment } from '#lib/server/warranty.js';
+import { deleteAttachmentFile } from '#lib/server/attachmentStorage.js';
+import { requireHousehold } from '#lib/server/apiGuard.js';
+import { canEditEntries } from '#lib/rbac.js';
 import type { RequestHandler } from './$types';
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
