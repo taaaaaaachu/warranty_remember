@@ -542,7 +542,7 @@
 	</div>
 	<div style={section}>
 		<h2 style="margin:0 0 0.5rem; font-size:1rem;">ユーザーパスワードのリセット</h2>
-		<p style="font-size:0.85rem; color:var(--muted);">リセットすると対象ユーザーの全セッションが無効になり、登録済みのパスキーもすべて削除されます。対象ユーザーは一時パスワードでログインし、パスワードの変更が必要になります。</p>
+		<p style="font-size:0.85rem; color:var(--muted);">リセットすると対象ユーザーの全セッションが無効になり、登録済みのパスキーもすべて削除されます。対象ユーザーは仮パスワードでログインし、新しいパスワードかパスキーの設定が必要になります。</p>
 		{#if adminUsers.length === 0}
 			<p style="color:var(--muted);">自分以外のユーザーはいません。</p>
 		{:else}
@@ -550,7 +550,7 @@
 				{#each adminUsers as user (user.id)}
 					<li style="display:flex; gap:0.5rem; align-items:center;">
 						<span>{user.username}</span>
-						<button onclick={() => resetUser(user)} disabled={busy} style="margin-left:auto; border:1px solid var(--warn); background:var(--card); color:var(--warn); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">一時パスワードを発行</button>
+						<button onclick={() => resetUser(user)} disabled={busy} style="margin-left:auto; border:1px solid var(--warn); background:var(--card); color:var(--warn); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">仮パスワードを発行</button>
 						<button onclick={() => deleteAdminUser(user)} disabled={busy} style="border:1px solid var(--danger); background:var(--card); color:var(--danger); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">削除</button>
 					</li>
 				{/each}
@@ -558,7 +558,7 @@
 		{/if}
 		{#if adminError}<p style="color:var(--danger);">{adminError}</p>{/if}
 		{#if resetResult}
-			<p style="color:var(--warn);">ユーザー <b>{resetResult.username}</b> のパスキーを削除し、一時パスワードを発行しました(この画面でのみ表示):</p>
+			<p style="color:var(--warn);">ユーザー <b>{resetResult.username}</b> のパスキーを削除し、仮パスワードを発行しました(この画面でのみ表示):</p>
 			<code style="display:block; user-select:all; padding:0.5rem; background:var(--bg);">{resetResult.password}</code>
 		{/if}
 	</div>

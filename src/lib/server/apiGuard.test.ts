@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { requireRecentAuth } from './apiGuard';
+import { allowedWithTemporaryPassword, requireRecentAuth } from './apiGuard';
 
 describe('requireRecentAuth', () => {
 	const user = { id: 'u', username: 'u', instanceRole: 'user' as const, mustChangePassword: false };
@@ -16,5 +16,25 @@ describe('requireRecentAuth', () => {
 			expect.objectContaining({ status: 428 })
 		);
 		expect(() => requireRecentAuth({ user: null, session: null })).toThrow(expect.objectContaining({ status: 401 }));
+	});
+});
+
+describe('allowedWithTemporaryPassword', () => {
+	it('変更画面・ログアウトと、パスワード変更・パスキー登録・本人確認の API だけ許す', () => {
+		for (const p of [
+			'/account',
+			'/logout',
+			'/_app/immutable/x.js',
+			'/api/account/password',
+			'/api/account/reauth',
+			'/api/passkey/auth/options',
+			'/api/passkey/register/options',
+			'/api/passkey/register/verify'
+		]) {
+			expect(allowedWithTemporaryPassword(p)).toBe(true);
+		}
+		for (const p of ['/', '/archive', '/entries/x', '/api/entries', '/api/account/passkeys/x', '/api/account/delete', '/api/admin/users']) {
+			expect(allowedWithTemporaryPassword(p)).toBe(false);
+		}
 	});
 });

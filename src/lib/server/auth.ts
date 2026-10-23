@@ -69,8 +69,8 @@ export function changePassword(
 }
 
 /**
- * 管理者リセット用(認証情報の全初期化)。一時パスワードを設定し、全パスキーと全セッションを
- * 削除して、次回ログインで変更を要求する(docs/adr/0002)。
+ * 管理者リセット用(認証情報の全初期化)。仮パスワードを設定し、全パスキーと全セッションを
+ * 削除して、次回ログインで変更を要求する(docs/adr/0002, 0003)。
  */
 export function resetPassword(userId: string, passwordHash: string, database: Db = db): boolean {
 	return database.transaction((tx) => {
@@ -126,7 +126,7 @@ export async function verifyUserPassword(userId: string, password: string, datab
 	return verify(user.passwordHash, password).catch(() => false);
 }
 
-/** 管理者リセット時に表示する一時パスワードを生成する。 */
+/** 管理者リセット時に表示する仮パスワードを生成する。 */
 export function generateTemporaryPassword(): string {
 	return `Warranty-${randomBytes(12).toString('base64url')}!`;
 }

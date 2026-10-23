@@ -46,7 +46,7 @@ export function getCredentialSummary(db: Db, userId: string): CredentialSummary 
 
 /**
  * パスワード変更・設定で求める確認。
- * forced = 強制変更中(確認なし)、current_password = 現在のパスワード必須(直近の本人確認では代えない)、
+ * forced = 仮パスワードからの変更(現在のパスワードの代わりに直近の本人確認)、current_password = 現在のパスワード必須(直近の本人確認では代えない)、
  * recent_auth = パスワードのないユーザーの新規設定(直近の本人確認)。
  */
 export type PasswordChangeCheck = 'forced' | 'current_password' | 'recent_auth';
@@ -64,8 +64,15 @@ export function listPasskeyIds(db: Db, userId: string): { id: string; transports
 	return db.select({ id: passkeys.id, transports: passkeys.transports }).from(passkeys).where(eq(passkeys.userId, userId)).all();
 }
 
+/** パスキーを追加する。仮パスワードのユーザーなら仮パスワードを削除し、パスキーのみのユーザーにする(docs/adr/0003)。 */
 export function addPasskey(db: Db, row: Omit<PasskeyRow, 'lastUsedAt'>): void {
-	db.insert(passkeys).values(row).run();
+	db.transaction(() => {
+		db.insert(passkeys).values(row).run();
+		db.update(users)
+			.set({ passwordHash: null, mustChangePassword: false })
+			.where(and(eq(users.id, row.userId), eq(users.mustChangePassword, true)))
+			.run();
+	});
 }
 
 /** ログインに使われたパスキーのカウンタと最終使用日時を更新する。 */

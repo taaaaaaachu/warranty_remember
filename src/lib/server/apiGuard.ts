@@ -30,6 +30,25 @@ export function requireRecentAuth(locals: Pick<App.Locals, 'user' | 'session'>):
 	return { ...user, sessionId: locals.session.id };
 }
 
+/** 仮パスワードのユーザーでも使える API。パスワード変更・パスキー登録と、その前の本人確認だけ(docs/adr/0003)。 */
+const TEMPORARY_PASSWORD_APIS = new Set([
+	'/api/account/password',
+	'/api/account/reauth',
+	'/api/passkey/auth/options',
+	'/api/passkey/register/options',
+	'/api/passkey/register/verify'
+]);
+
+/** 仮パスワードのユーザーがこのパスを開けるか。変更画面(/account)とログアウトは通す。 */
+export function allowedWithTemporaryPassword(pathname: string): boolean {
+	return (
+		TEMPORARY_PASSWORD_APIS.has(pathname) ||
+		pathname === '/account' ||
+		pathname === '/logout' ||
+		pathname.startsWith('/_app/')
+	);
+}
+
 export interface ActiveContext {
 	user: AuthedUser;
 	householdId: string;

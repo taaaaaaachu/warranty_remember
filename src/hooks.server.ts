@@ -4,6 +4,7 @@ import { HOUSEHOLD_COOKIE } from '$lib/server/sessionCookie';
 import { db } from '$lib/server/db';
 import { listUserHouseholds } from '$lib/server/households';
 import { dev } from '$app/environment';
+import { allowedWithTemporaryPassword } from '$lib/server/apiGuard';
 
 function cookieOpts(expires: Date) {
 	return { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: !dev, expires };
@@ -21,14 +22,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (result) {
 			event.locals.user = result.user;
 			event.locals.session = result.session;
+			// 仮パスワードのユーザーは、変更を済ませるまで他のページ・API を使えない(docs/adr/0003)。
 			if (result.user.mustChangePassword) {
 				const pathname = event.url.pathname;
-				const allowed =
-					pathname === '/account' ||
-					pathname === '/api/account/password' ||
-					pathname === '/logout' ||
-					pathname.startsWith('/_app/');
-				if (!allowed) {
+				if (!allowedWithTemporaryPassword(pathname)) {
 					if (pathname.startsWith('/api/'))
 						return new Response(JSON.stringify({ message: 'パスワード変更が必要です。' }), {
 							status: 403,
