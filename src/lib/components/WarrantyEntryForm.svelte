@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { localDateInput } from '$lib/format';
 
 	interface InitialValues {
@@ -26,20 +27,24 @@
 		onSave: (body: Record<string, unknown>) => Promise<string | void>;
 	} = $props();
 
-	let name = $state(initial.name ?? '');
-	let category = $state(initial.category ?? '');
-	let manufacturer = $state(initial.manufacturer ?? '');
-	let modelNumber = $state(initial.modelNumber ?? '');
-	let serialNumber = $state(initial.serialNumber ?? '');
-	let purchasedAt = $state(initial.purchasedAt ? localDateInput(new Date(initial.purchasedAt)) : localDateInput());
-	let purchasedFrom = $state(initial.purchasedFrom ?? '');
-	let price = $state(initial.price != null ? String(initial.price) : '');
+	// 入力欄の初期値として最初の値だけを使う(編集中に親のデータが更新されても入力を上書きしない)。
+	// 別の保証登録を開くときは呼び出し側が {#key} で作り直す。
+	const init = untrack(() => initial);
+
+	let name = $state(init.name ?? '');
+	let category = $state(init.category ?? '');
+	let manufacturer = $state(init.manufacturer ?? '');
+	let modelNumber = $state(init.modelNumber ?? '');
+	let serialNumber = $state(init.serialNumber ?? '');
+	let purchasedAt = $state(init.purchasedAt ? localDateInput(new Date(init.purchasedAt)) : localDateInput());
+	let purchasedFrom = $state(init.purchasedFrom ?? '');
+	let price = $state(init.price != null ? String(init.price) : '');
 	// 既存データに手動上書き(warrantyMonths が null)があればそのモードで開く。
-	let endDateMode = $state<'months' | 'manual'>(initial.warrantyMonths != null || initial.warrantyEndAt === undefined ? 'months' : 'manual');
-	let warrantyMonths = $state(initial.warrantyMonths != null ? String(initial.warrantyMonths) : '12');
-	let warrantyEndAt = $state(initial.warrantyEndAt ? localDateInput(new Date(initial.warrantyEndAt)) : '');
-	let contactNote = $state(initial.contactNote ?? '');
-	let memo = $state(initial.memo ?? '');
+	let endDateMode = $state<'months' | 'manual'>(init.warrantyMonths != null || init.warrantyEndAt === undefined ? 'months' : 'manual');
+	let warrantyMonths = $state(init.warrantyMonths != null ? String(init.warrantyMonths) : '12');
+	let warrantyEndAt = $state(init.warrantyEndAt ? localDateInput(new Date(init.warrantyEndAt)) : '');
+	let contactNote = $state(init.contactNote ?? '');
+	let memo = $state(init.memo ?? '');
 
 	let saving = $state(false);
 	let error = $state('');
