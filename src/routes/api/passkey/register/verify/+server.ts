@@ -6,6 +6,8 @@ import { requireRecentAuth } from '$lib/server/apiGuard';
 import { addPasskey, normalizePasskeyName } from '$lib/server/credentials';
 import { countUsers, registerUser, REGISTER_ERROR_MESSAGES } from '$lib/server/households';
 import { takeChallenge, verifyRegistration } from '$lib/server/webauthn';
+import { consumeResetLink, RESET_LINK_INVALID } from '$lib/server/resetLinks';
+import { resetUserAuthRateLimitById } from '$lib/server/authRateLimit';
 import type { RequestHandler } from './$types';
 
 /** パスキー登録の完了。body: { response, name }。 */
@@ -21,6 +23,20 @@ export const POST: RequestHandler = async ({ locals, request, cookies, url }) =>
 	const cred = await verifyRegistration(url, body?.response, stored.challenge);
 	if (!cred) throw error(400, 'パスキーを確認できませんでした。');
 	const passkey = { ...cred, name, createdAt: Date.now() };
+
+	if (pending.kind === 'reset') {
+		let userId: string | null;
+		try {
+			userId = consumeResetLink(db, pending.token, { passkey });
+		} catch {
+			throw error(409, 'このパスキーは登録済みです。');
+		}
+		if (!userId) throw error(410, RESET_LINK_INVALID);
+		resetUserAuthRateLimitById(userId, db);
+		const { token, expiresAt } = createSession(userId);
+		setSessionCookie(cookies, token, expiresAt);
+		return json({ ok: true });
+	}
 
 	if (pending.kind === 'add') {
 		const user = requireRecentAuth(locals);

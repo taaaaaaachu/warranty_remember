@@ -25,12 +25,14 @@
 	let lastCode = $state<string | null>(null);
 	let copiedCode = $state<string | null>(null);
 	let busy = $state(false);
-	type AdminUser = { id: string; username: string };
+	type AdminUser = { id: string; username: string; resetLinkExpiresAt: number | null };
 	type HouseholdSummary = { id: string; name: string; memberCount: number; ownerCount: number; entryCount: number; createdAt: number; activeInviteCount: number };
 	type HouseholdMember = { userId: string; username: string; role: 'owner' | 'manager' | 'member' };
 	let adminUsers = $state<AdminUser[]>([]);
 	let householdMembers = $derived(data.members ?? []);
 	let resetResult = $state<{ username: string; password: string } | null>(null);
+	/** 発行直後のリセットリンク。URL はこのときしか見られない。 */
+	let issuedLink = $state<{ username: string; url: string } | null>(null);
 	let adminError = $state('');
 	let deleteUsername = $state('');
 	let deletePassword = $state('');
@@ -133,8 +135,7 @@
 
 	onMount(async () => {
 		if (data.user?.instanceRole === 'super_admin') {
-			const res = await fetch('/api/admin/users');
-			if (res.ok) adminUsers = await res.json();
+			await loadAdminUsers();
 			adminHouseholds = data.adminHouseholds ?? [];
 		}
 	});
@@ -174,6 +175,53 @@
 				return;
 			}
 			resetResult = { username: user.username, password: result.temporaryPassword };
+			if (issuedLink?.username === user.username) issuedLink = null;
+			await loadAdminUsers();
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function loadAdminUsers() {
+		const res = await fetch('/api/admin/users');
+		if (res.ok) adminUsers = await res.json();
+	}
+
+	async function issueResetLink(user: AdminUser) {
+		const message = user.resetLinkExpiresAt
+			? `${user.username} のリセットリンクを再発行しますか?
+未使用の古いリンクは使えなくなります。`
+			: `${user.username} のリセットリンクを発行しますか?
+本人がリンクを使うと、パスワードとパスキーがすべて置き換わります。`;
+		if (!window.confirm(message)) return;
+		adminError = '';
+		busy = true;
+		try {
+			const res = await fetch(`/api/admin/users/${user.id}/reset-link`, { method: 'POST' });
+			const result = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				adminError = result.message ?? 'リセットリンクの発行に失敗しました。';
+				return;
+			}
+			issuedLink = { username: user.username, url: result.url };
+			await loadAdminUsers();
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function revokeResetLink(user: AdminUser) {
+		if (!window.confirm(`${user.username} のリセットリンクを取り消しますか?`)) return;
+		adminError = '';
+		busy = true;
+		try {
+			const res = await fetch(`/api/admin/users/${user.id}/reset-link`, { method: 'DELETE' });
+			if (!res.ok) {
+				adminError = (await res.json().catch(() => ({}))).message ?? 'リセットリンクの取り消しに失敗しました。';
+				return;
+			}
+			if (issuedLink?.username === user.username) issuedLink = null;
+			await loadAdminUsers();
 		} finally {
 			busy = false;
 		}
@@ -542,7 +590,7 @@
 	</div>
 	<div style={section}>
 		<h2 style="margin:0 0 0.5rem; font-size:1rem;">ユーザーパスワードのリセット</h2>
-		<p style="font-size:0.85rem; color:var(--muted);">リセットすると対象ユーザーの全セッションが無効になり、登録済みのパスキーもすべて削除されます。対象ユーザーは仮パスワードでログインし、新しいパスワードかパスキーの設定が必要になります。</p>
+		<p style="font-size:0.85rem; color:var(--muted);">リセットすると対象ユーザーの全セッションが無効になり、登録済みのパスキーもすべて削除されます。対象ユーザーは仮パスワードでログインし、新しいパスワードかパスキーの設定が必要になります。リセットリンク(24時間・1回限り)なら、本人がリンクを使った時点で同じ初期化が行われ、本人が新しいパスワードかパスキーを設定します。</p>
 		{#if adminUsers.length === 0}
 			<p style="color:var(--muted);">自分以外のユーザーはいません。</p>
 		{:else}
@@ -550,7 +598,14 @@
 				{#each adminUsers as user (user.id)}
 					<li style="display:flex; gap:0.5rem; align-items:center;">
 						<span>{user.username}</span>
+						{#if user.resetLinkExpiresAt}
+							<span style="color:var(--muted); font-size:0.8rem;">リンク発行中(〜{formatDateTime(user.resetLinkExpiresAt)})</span>
+						{/if}
 						<button onclick={() => resetUser(user)} disabled={busy} style="margin-left:auto; border:1px solid var(--warn); background:var(--card); color:var(--warn); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">仮パスワードを発行</button>
+						<button onclick={() => issueResetLink(user)} disabled={busy} style="border:1px solid var(--warn); background:var(--card); color:var(--warn); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">リセットリンク</button>
+						{#if user.resetLinkExpiresAt}
+							<button onclick={() => revokeResetLink(user)} disabled={busy} style="border:1px solid var(--border); background:var(--card); color:var(--fg); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">リンク取り消し</button>
+						{/if}
 						<button onclick={() => deleteAdminUser(user)} disabled={busy} style="border:1px solid var(--danger); background:var(--card); color:var(--danger); border-radius:0.4rem; padding:0.3rem 0.6rem; cursor:pointer;">削除</button>
 					</li>
 				{/each}
@@ -560,6 +615,13 @@
 		{#if resetResult}
 			<p style="color:var(--warn);">ユーザー <b>{resetResult.username}</b> のパスキーを削除し、仮パスワードを発行しました(この画面でのみ表示):</p>
 			<code style="display:block; user-select:all; padding:0.5rem; background:var(--bg);">{resetResult.password}</code>
+		{/if}
+		{#if issuedLink}
+			<p style="color:var(--warn);">ユーザー <b>{issuedLink.username}</b> のリセットリンク(24時間有効・1回限り。この画面でのみ表示)。本人に渡してください:</p>
+			<div style="display:flex; gap:0.5rem; align-items:center;">
+				<code style="flex:1; min-width:0; overflow-wrap:anywhere; user-select:all; padding:0.5rem; background:var(--bg);">{issuedLink.url}</code>
+				<button type="button" onclick={() => copyInviteCode(issuedLink!.url)} style="border:1px solid var(--border); background:var(--card); color:var(--fg); border-radius:0.4rem; padding:0.25rem 0.5rem; cursor:pointer;">{copiedCode === issuedLink.url ? 'コピーしました' : 'コピー'}</button>
+			</div>
 		{/if}
 	</div>
 {/if}

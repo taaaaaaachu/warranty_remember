@@ -15,6 +15,13 @@
       "when": 1792080353368,
       "tag": "0001_mean_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792778941686,
+      "tag": "0002_reset_links",
+      "breakpoints": true
     }
   ]
 }

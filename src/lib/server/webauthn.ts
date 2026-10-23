@@ -22,10 +22,14 @@ import { getPasskey, recordPasskeyUse } from './credentials';
 const RP_NAME = 'Warranty Remember';
 const CHALLENGE_TTL_MS = 1000 * 60 * 5;
 
-/** 登録の待ち状態。signup = 未登録者の会員登録(世帯の作成・招待での参加を含む)、add = ログイン中のユーザーのパスキー追加。 */
+/**
+ * 登録の待ち状態。signup = 未登録者の会員登録(世帯の作成・招待での参加を含む)、add = ログイン中のユーザーのパスキー追加、
+ * reset = リセットリンクでの再設定。
+ */
 export type RegistrationPending =
 	| { kind: 'signup'; userId: string; username: string; inviteCode: string; householdName: string }
-	| { kind: 'add'; userId: string };
+	| { kind: 'add'; userId: string }
+	| { kind: 'reset'; token: string };
 
 type Purpose = 'reg' | 'auth';
 interface Stored {

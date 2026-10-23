@@ -39,12 +39,16 @@ const TEMPORARY_PASSWORD_APIS = new Set([
 	'/api/passkey/register/verify'
 ]);
 
-/** 仮パスワードのユーザーがこのパスを開けるか。変更画面(/account)とログアウトは通す。 */
+/**
+ * 仮パスワードのユーザーがこのパスを開けるか。変更画面(/account)・ログアウトと、
+ * 別のユーザーのものかもしれないリセットリンク(/reset/*)は通す。
+ */
 export function allowedWithTemporaryPassword(pathname: string): boolean {
 	return (
 		TEMPORARY_PASSWORD_APIS.has(pathname) ||
 		pathname === '/account' ||
 		pathname === '/logout' ||
+		pathname.startsWith('/reset/') ||
 		pathname.startsWith('/_app/')
 	);
 }

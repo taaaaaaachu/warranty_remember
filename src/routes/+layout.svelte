@@ -8,6 +8,8 @@
 	import PasswordChangeForm from '$lib/components/PasswordChangeForm.svelte';
 
 	let { data, children } = $props();
+	// 仮パスワードなら変更画面を出す。リセットリンクは別のユーザーのものかもしれないのでそのまま開く(docs/adr/0003)。
+	const forced = $derived(!!data.user?.mustChangePassword && !page.url.pathname.startsWith('/reset/'));
 
 	onMount(() => {
 		if (!('serviceWorker' in navigator)) return;
@@ -35,7 +37,7 @@
 	}
 </script>
 
-{#if data.user && !data.user.mustChangePassword}
+{#if data.user && !forced}
 	<header
 		style="border-bottom:1px solid var(--border); background:var(--card);
 		       position:sticky; top:0; z-index:10;"
@@ -86,7 +88,7 @@
 {/if}
 
 <main style="max-width:48rem; margin:0 auto; padding:1rem;">
-	{#if data.user?.mustChangePassword}
+	{#if forced}
 		<PasswordChangeForm forced={true} />
 	{:else}
 		{@render children()}

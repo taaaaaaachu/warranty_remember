@@ -24,6 +24,7 @@ describe('allowedWithTemporaryPassword', () => {
 		for (const p of [
 			'/account',
 			'/logout',
+			'/reset/abc',
 			'/_app/immutable/x.js',
 			'/api/account/password',
 			'/api/account/reauth',
