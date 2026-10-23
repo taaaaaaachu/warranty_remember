@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import { formatDate, formatDateTime } from '$lib/format';
 	import PasswordChangeForm from '$lib/components/PasswordChangeForm.svelte';
 	import {
@@ -392,6 +392,8 @@
 			return;
 		}
 		adminHouseholds = adminHouseholds.filter((h) => h.id !== household.id);
+		// 自分が所属していた世帯なら、ヘッダーの世帯切替からも消す。
+		await invalidate('app:user');
 	}
 
 	async function createAdminInvite(household: HouseholdSummary) {

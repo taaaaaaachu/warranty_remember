@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { version } from '$app/environment';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import PasswordChangeForm from '$lib/components/PasswordChangeForm.svelte';
 
@@ -12,13 +12,24 @@
 	const forced = $derived(!!data.user?.mustChangePassword && !page.url.pathname.startsWith('/reset/'));
 
 	onMount(() => {
+		// 別端末で世帯への追加・除名やロール変更があっても、タブに戻ったときに反映する。
+		// オフライン時に読み直すとエラー画面になるため、オンラインのときだけ。
+		const refreshUser = () => {
+			if (document.visibilityState === 'visible' && navigator.onLine) invalidate('app:user');
+		};
+		document.addEventListener('visibilitychange', refreshUser);
+		registerServiceWorker();
+		return () => document.removeEventListener('visibilitychange', refreshUser);
+	});
+
+	function registerServiceWorker() {
 		if (!('serviceWorker' in navigator)) return;
 
 		// ビルドごとにURLを変え、CDNに残った旧service-worker.jsを再利用させない。
 		navigator.serviceWorker
 			.register(`/service-worker.js?v=${encodeURIComponent(version)}`)
 			.catch((error: unknown) => console.error('Service Workerの登録に失敗しました', error));
-	});
+	}
 
 	const nav = [
 		{ href: '/', label: '保証登録' },
