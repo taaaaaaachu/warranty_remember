@@ -27,7 +27,7 @@
 | 認証 | サーバーセッション(httpOnly Cookie)、パスワードは Argon2(`@node-rs/argon2`)、パスキーは SimpleWebAuthn(`@simplewebauthn/server` / `browser` v14) |
 | 画像処理・ストレージ | sharp でリサイズ・圧縮し、ローカルファイルシステムに保存 |
 | PWA | Web App Manifest + Service Worker |
-| インフラ | Docker(マルチステージビルド、Node.js 22)、GHCR、Watchtower による自動更新、Cloudflare Tunnel 経由で公開 |
+| インフラ | Docker(マルチステージビルド、Node.js 24)、GHCR、Watchtower による自動更新、Cloudflare Tunnel 経由で公開 |
 | CI/CD | GitHub Actions(ESLint・svelte-check・Vitest → main のみイメージをビルドして GHCR へ push) |
 | テスト | Vitest 5 |
 
@@ -37,7 +37,7 @@
 ブラウザ(PWA)
    │  HTTPS(Cloudflare Tunnel)
    ▼
-SvelteKit(adapter-node / Node.js 22, Docker コンテナ)
+SvelteKit(adapter-node / Node.js 24, Docker コンテナ)
    ├─ hooks.server.ts … セッション検証・仮パスワードの制御・現在の世帯の解決
    ├─ routes/api/*    … 保証登録・添付画像・世帯・招待・認証情報の API
    └─ lib/server/*    … ドメインロジック(すべての保証登録操作は世帯IDで絞り込む)
@@ -86,7 +86,7 @@ SvelteKit(adapter-node / Node.js 22, Docker コンテナ)
 
 ## ローカルでの起動方法
 
-Node.js 22.17 以上を想定(SvelteKit 3 の要件。CI と Docker イメージは Node.js 22 系の最新)。
+Node.js 22.17 以上を想定(SvelteKit 3 の要件。CI と Docker イメージは Node.js 24 系(Active LTS)の最新)。
 
 ```bash
 npm ci
