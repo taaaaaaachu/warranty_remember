@@ -75,7 +75,7 @@ SvelteKit(adapter-node / Node.js 24, Docker コンテナ)
 
 ## テスト
 
-- **Vitest** によるテスト: **18ファイル / 125件**(`npm test` で全件パス)。
+- **Vitest** によるテスト: **18ファイル / 125件**(`pnpm test` で全件パス)。
 - 主な対象:
   - 保証終了日の計算・並び替え、入力値の検証、表示フォーマット
   - 世帯・所属・招待コード・owner 交代などの世帯ロジック、RBAC の権限判定、API ガード
@@ -89,10 +89,10 @@ SvelteKit(adapter-node / Node.js 24, Docker コンテナ)
 Node.js 22.17 以上を想定(SvelteKit 3 の要件。CI と Docker イメージは Node.js 24 系(Active LTS)の最新)。
 
 ```bash
-npm ci
+pnpm install
 cp .env.example .env   # 任意。既定値は ./data/app.sqlite と ./data/uploads
-npm run db:migrate     # SQLite にスキーマを適用(./data/app.sqlite)
-npm run dev            # http://localhost:5173
+pnpm db:migrate     # SQLite にスキーマを適用(./data/app.sqlite)
+pnpm dev            # http://localhost:5173
 ```
 
 ブラウザで `/register` を開くと、最初のユーザーは招待コードなしで登録でき、インスタンス管理者になります。
@@ -101,11 +101,11 @@ npm run dev            # http://localhost:5173
 
 | コマンド | 内容 |
 |---|---|
-| `npm test` | テスト実行 |
-| `npm run check` | 型チェック(svelte-check) |
-| `npm run lint` | ESLint |
-| `npm run db:generate` | スキーマ変更後にマイグレーションを生成(その後 `npm run db:migrate`) |
-| `npm run build` / `npm start` | 本番ビルドと起動 |
+| `pnpm test` | テスト実行 |
+| `pnpm check` | 型チェック(svelte-check) |
+| `pnpm lint` | ESLint |
+| `pnpm db:generate` | スキーマ変更後にマイグレーションを生成(その後 `pnpm db:migrate`) |
+| `pnpm build` / `pnpm start` | 本番ビルドと起動 |
 
 Docker で本番同等の構成を手元で確認する場合:
 

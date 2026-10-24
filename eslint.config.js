@@ -10,7 +10,7 @@ import globals from 'globals';
  */
 export default ts.config(
 	{
-		ignores: ['.svelte-kit/', 'build/', 'node_modules/', 'drizzle/', 'static/', 'package-lock.json']
+		ignores: ['.svelte-kit/', 'build/', 'node_modules/', 'drizzle/', 'static/', 'pnpm-lock.yaml']
 	},
 	js.configs.recommended,
 	...ts.configs.recommended,
