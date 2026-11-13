@@ -264,6 +264,15 @@ describe('previewInvite', () => {
 		expect(inviteState(db.select().from(invites).where(eq(invites.id, invite.id)).get()!)).toBe('active');
 	});
 
+	it('自分が使って使用済みになったコードでも、参加済みと分かる', () => {
+		const alice = registerUser(db, { username: 'alice', passwordHash: 'x', requireInvite: false });
+		if (!alice.ok) throw new Error('setup failed');
+		const invite = createInvite(db, alice.householdId, alice.user.id, null);
+		const bob = registerUser(db, { username: 'bob', passwordHash: 'x', requireInvite: true, inviteCode: invite.code });
+		if (!bob.ok) throw new Error('setup failed');
+		expect(previewInvite(db, invite.code, bob.user.id)).toMatchObject({ state: 'used', alreadyMember: true });
+	});
+
 	it('存在しないコードは null、無効化済みは revoked', () => {
 		const alice = registerUser(db, { username: 'alice', passwordHash: 'x', requireInvite: false });
 		if (!alice.ok) throw new Error('setup failed');

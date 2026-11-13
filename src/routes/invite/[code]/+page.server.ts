@@ -15,16 +15,16 @@ export const load: PageServerLoad = ({ params, locals }) => {
 export const actions: Actions = {
 	default: ({ params, locals, cookies }) => {
 		if (!locals.user) throw redirect(303, `/login?next=${encodeURIComponent(`/invite/${params.code}`)}`);
-		const result = joinHouseholdByInvite(db, locals.user.id, params.code);
-		if (result.ok) {
-			setHouseholdCookie(cookies, result.householdId);
-		} else if (result.error === 'already_member') {
-			// 参加済みの世帯なら、その世帯へ切り替えるだけ(コードは消費しない)。
-			const invite = previewInvite(db, params.code, null);
-			if (invite) setHouseholdCookie(cookies, invite.householdId);
-		} else {
-			return fail(400, { error: REGISTER_ERROR_MESSAGES[result.error] });
+		const invite = previewInvite(db, params.code, locals.user.id);
+		if (!invite) throw error(404, '招待コードが正しくありません。');
+		// 参加済みの世帯なら、その世帯へ切り替えるだけ(コードは消費しない)。
+		// 自分が使って使用済みになったコードでも開けるよう、コードの状態より先に判定する。
+		if (!invite.alreadyMember) {
+			const result = joinHouseholdByInvite(db, locals.user.id, params.code);
+			if (!result.ok && result.error !== 'already_member')
+				return fail(400, { error: REGISTER_ERROR_MESSAGES[result.error] });
 		}
+		setHouseholdCookie(cookies, invite.householdId);
 		throw redirect(303, '/');
 	}
 };
