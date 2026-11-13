@@ -13,7 +13,7 @@
 		'background:var(--card); color:var(--accent); border:1px solid var(--accent); border-radius:0.5rem; padding:0.6rem; cursor:pointer;';
 </script>
 
-<svelte:head><title>世帯への招待 — Warranty Remember</title></svelte:head>
+<svelte:head><title>世帯への招待 — 保証リマインダー</title></svelte:head>
 
 <div style="max-width:28rem; margin:2rem auto; background:var(--card); border:1px solid var(--border); border-radius:0.6rem; padding:1.2rem; display:flex; flex-direction:column; gap:0.8rem;">
 	<h1 style="font-size:1.3rem; margin:0;">世帯「{data.invite.householdName}」への招待</h1>
