@@ -13,7 +13,8 @@
 	async function passkeyLogin(useBrowserAutofill: boolean) {
 		try {
 			await loginWithPasskey(useBrowserAutofill);
-			await goto(resolve('/'), { refreshAll: true });
+			if (data.next === '/') await goto(resolve('/'), { refreshAll: true });
+			else location.assign(data.next);
 		} catch (err) {
 			if (isPasskeyCancel(err)) return;
 			passkeyError = err instanceof Error ? err.message : 'パスキーでログインできませんでした。';

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { eq } from 'drizzle-orm';
 import { createDb, type Db } from './db';
-import { users, passkeys } from './db/schema';
+import { users, passkeys, invites } from './db/schema';
 import {
 	countUsers,
 	createHousehold,
@@ -19,7 +19,9 @@ import {
 	listPendingOwnershipTransfers,
 	listHouseholdSummaries,
 	removeHouseholdMember,
-	precheckRegistration
+	precheckRegistration,
+	previewInvite,
+	inviteState
 } from './households';
 
 let db: Db;
@@ -248,5 +250,35 @@ describe('precheckRegistration', () => {
 		expect(precheckRegistration(db, { username: 'new', requireInvite: true, inviteCode: inv.code })).toBeNull();
 		// 事前検証では招待を消費しない。
 		expect(listHouseholdInvites(db, owner.householdId).find((i) => i.id === inv.id)?.state).toBe('active');
+	});
+});
+
+describe('previewInvite', () => {
+	it('招待先の世帯名・発行者・状態を返し、コードは消費しない', () => {
+		const alice = registerUser(db, { username: 'alice', passwordHash: 'x', requireInvite: false });
+		if (!alice.ok) throw new Error('setup failed');
+		const invite = createInvite(db, alice.householdId, alice.user.id, null);
+		const name = listUserHouseholds(db, alice.user.id)[0].name;
+		expect(previewInvite(db, invite.code, null)).toEqual({ householdId: alice.householdId, householdName: name, issuer: 'alice', state: 'active', alreadyMember: false });
+		expect(previewInvite(db, invite.code, alice.user.id)?.alreadyMember).toBe(true);
+		expect(inviteState(db.select().from(invites).where(eq(invites.id, invite.id)).get()!)).toBe('active');
+	});
+
+	it('自分が使って使用済みになったコードでも、参加済みと分かる', () => {
+		const alice = registerUser(db, { username: 'alice', passwordHash: 'x', requireInvite: false });
+		if (!alice.ok) throw new Error('setup failed');
+		const invite = createInvite(db, alice.householdId, alice.user.id, null);
+		const bob = registerUser(db, { username: 'bob', passwordHash: 'x', requireInvite: true, inviteCode: invite.code });
+		if (!bob.ok) throw new Error('setup failed');
+		expect(previewInvite(db, invite.code, bob.user.id)).toMatchObject({ state: 'used', alreadyMember: true });
+	});
+
+	it('存在しないコードは null、無効化済みは revoked', () => {
+		const alice = registerUser(db, { username: 'alice', passwordHash: 'x', requireInvite: false });
+		if (!alice.ok) throw new Error('setup failed');
+		const invite = createInvite(db, alice.householdId, alice.user.id, null);
+		revokeInvite(db, alice.householdId, invite.id);
+		expect(previewInvite(db, 'nope', null)).toBeNull();
+		expect(previewInvite(db, invite.code, null)?.state).toBe('revoked');
 	});
 });
